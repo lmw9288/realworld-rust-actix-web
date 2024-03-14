@@ -1,30 +1,41 @@
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+use mysql::prelude::FromRow;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UserWrapper<T>
-where
-    T: serde::Serialize,
+    where
+        T: serde::Serialize,
 {
     pub user: T,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+
+#[derive(Debug, Deserialize, Serialize, FromRow)]
+pub struct UserEntity {
+    pub id: i64,
+    pub username: String,
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UserLogin {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-pub struct UserRegistry {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UserRegistryForm {
     pub username: String,
     pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UserResponse {
     pub username: String,
     pub email: String,
-    pub password: String,
+    // pub password: String,
     pub bio: Option<String>,
-    pub image: Option<String>
+    pub image: Option<String>,
 }
-
