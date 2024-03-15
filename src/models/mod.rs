@@ -1,6 +1,13 @@
 use mysql::prelude::FromRow;
 use serde::{Deserialize, Serialize};
 
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub(crate) sub: u64,
+    pub(crate) exp: u64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UserWrapper<T>
     where
@@ -12,7 +19,7 @@ pub struct UserWrapper<T>
 
 #[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct UserEntity {
-    pub id: i64,
+    pub id: u64,
     pub username: String,
     pub email: String,
     pub password: String,
@@ -35,6 +42,7 @@ pub struct UserRegistryForm {
 pub struct UserResponse {
     pub username: String,
     pub email: String,
+    pub token: String,
     // pub password: String,
     pub bio: Option<String>,
     pub image: Option<String>,

@@ -3,6 +3,7 @@ use derive_more::{Display, Error, From};
 use mysql::{Error, params, Pool};
 use mysql::prelude::*;
 use crate::models::UserEntity;
+use crate::utils::encrypt_password;
 
 #[derive(Debug, Display, Error, From)]
 pub enum PersistenceError {
@@ -39,6 +40,8 @@ pub fn insert_user(pool: &Pool, username: String, email: String, password: Strin
                    -> Result<u64, PersistenceError> {
     let mut conn = pool.get_conn()?;
 
+    let hash_password = encrypt_password(password);
+    
     let last_insert_id = conn.exec_drop(
         "
         INSERT INTO user (username, email, password)
@@ -47,7 +50,7 @@ pub fn insert_user(pool: &Pool, username: String, email: String, password: Strin
         params! {
             "username" => username,
             "email" => email,
-            "password" => password,
+            "password" => hash_password,
 
         },
     )
@@ -60,7 +63,7 @@ pub fn insert_user(pool: &Pool, username: String, email: String, password: Strin
     }
 }
 
-pub fn select_user(pool: &Pool, id: u64) -> Result<UserEntity, PersistenceError> {
+pub fn select_user_by_id(pool: &Pool, id: u64) -> Result<UserEntity, PersistenceError> {
     let mut conn = pool.get_conn()?;
 
     // 使用参数化查询以避免SQL注入风险
@@ -72,6 +75,27 @@ pub fn select_user(pool: &Pool, id: u64) -> Result<UserEntity, PersistenceError>
                 username,
                 email,
                 password: "".to_string(),
+            }
+        },
+    )?.into_iter().next();
+    match user {
+        None => Err(PersistenceError::Unknown),
+        Some(user) => Ok(user),
+    }
+}
+
+pub fn select_user_by_email(pool: &Pool, email: String) -> Result<UserEntity, PersistenceError> {
+    let mut conn = pool.get_conn()?;
+
+    // 使用参数化查询以避免SQL注入风险
+    let user = conn.exec_map(
+        "SELECT id, username, email, password FROM user WHERE email = :email limit 1",
+        params! {"email" => email}, |(id, username, email, password)| {
+            UserEntity {
+                id,
+                username,
+                email,
+                password,
             }
         },
     )?.into_iter().next();
