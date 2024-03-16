@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub(crate) sub: u64,
-    pub(crate) exp: u64,
+    pub sub: u64,
+    pub exp: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -37,6 +37,16 @@ pub struct UserRegistryForm {
     pub email: String,
     pub password: String,
 }
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UserUpdateForm {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub bio: Option<String>,
+    pub image: Option<String>,
+}
+
+
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UserResponse {

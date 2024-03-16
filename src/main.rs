@@ -63,6 +63,7 @@ async fn main() -> std::io::Result<()> {
 
     log::info!("initializing database connection");
 
+    let i = Box::new(5);
 
     let builder = get_conn_builder();
 
@@ -83,6 +84,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/user")
                     .service(routes::current_user)
+                    .service(routes::update_user)
             )
     })
         .bind(("127.0.0.1", 3001))?
@@ -90,47 +92,6 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
-#[derive(Debug, Clone)]
-pub struct SessionState {
-    user_id: u64,
-    token: String,
-}
-
-impl FromRequest for SessionState {
-    type Error = Error;
-    type Future = Ready<Result<SessionState, Error>>;
-    // type Config = ();
-
-    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let auth = req.headers().get("Authorization");
-        // log::info!("Authorization: {:?}", auth);
-
-        match auth {
-            Some(auth) => {
-                let _split: Vec<&str> = auth.to_str().unwrap().split("Token").collect();
-                let token = _split[1].trim();
-
-                // log::info!("token: {}", token);
-
-                // let _config: Config = Config {};
-                // let _var = _config.get_config_with_key("SECRET_KEY");
-                // let key = _var.as_bytes();
-                match jsonwebtoken::decode::<Claims>(
-                    token,
-                    &DecodingKey::from_secret("realworld".as_ref()),
-                    &Validation::default(),
-                ) {
-                    Ok(token_data) => {
-                        let user_id = token_data.claims.sub;
-                        ok(SessionState { user_id, token: token.to_string() })
-                    }
-                    Err(_e) => err(ErrorUnauthorized("invalid token!")),
-                }
-            }
-            None => err(ErrorUnauthorized("blocked!")),
-        }
-    }
-}
 
 // async fn authenticate(req: ServiceRequest, auth: BearerAuth) -> Result<ServiceRequest, (Error, ServiceRequest)> {
 //     // 从 HTTP 请求中提取 JWT

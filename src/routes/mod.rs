@@ -1,19 +1,26 @@
 use std::ops::Add;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use actix_web::{post, web, Responder, Result, Error, error, get, HttpRequest, HttpMessage};
+
+use actix_web::{error, Error, get, HttpMessage, HttpRequest, post, put, Responder, Result, web};
 use actix_web::dev::ServiceRequest;
 use actix_web::http::StatusCode;
 use jsonwebtoken::{EncodingKey, Header};
 use mysql::Pool;
-use crate::models::{Claims, UserLogin, UserRegistryForm, UserResponse, UserWrapper};
-use crate::persistence::{insert_user, select_user_by_email, select_user_by_id};
-use crate::SessionState;
+
+use realworld_rust_actix_web::SessionState;
+
+use crate::models::{
+    Claims, UserLogin, UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper,
+};
+use crate::persistence::{insert_user, select_user_by_email, select_user_by_id, update_user_by_id};
 use crate::utils::verify_password;
 
 #[post("/login")]
-pub async fn login_user(json: web::Json<UserWrapper<UserLogin>>,
-                        pool: web::Data<Pool>) -> Result<impl Responder> {
+pub async fn login_user(
+    json: web::Json<UserWrapper<UserLogin>>,
+    pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     // println!("login_user: {:?}", json);
     // let email = json.email;
     // let password = json.password;
@@ -26,7 +33,11 @@ pub async fn login_user(json: web::Json<UserWrapper<UserLogin>>,
     // 创建 JWT 的 payload
     let my_claims = Claims {
         sub: user.id,
-        exp: SystemTime::now().add(Duration::from_secs(60 * 60 * 2)).duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        exp: SystemTime::now()
+            .add(Duration::from_secs(60 * 60 * 2))
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
     };
 
     // 生成 JWT
@@ -34,7 +45,8 @@ pub async fn login_user(json: web::Json<UserWrapper<UserLogin>>,
         &Header::default(),
         &my_claims,
         &EncodingKey::from_secret("realworld".as_ref()),
-    ).unwrap();
+    )
+    .unwrap();
     if verify_password(password, &user.password) {
         Ok(web::Json(UserWrapper {
             user: UserResponse {
@@ -65,12 +77,17 @@ pub async fn registry_user(
     let user = web::block(move || {
         let last_insert_id = insert_user(&pool, username, email, password)?;
         select_user_by_id(&pool, last_insert_id)
-    }).await??;
+    })
+    .await??;
 
     // 创建 JWT 的 payload
     let my_claims = Claims {
         sub: user.id,
-        exp: SystemTime::now().add(Duration::from_secs(60 * 60 * 2)).duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        exp: SystemTime::now()
+            .add(Duration::from_secs(60 * 60 * 2))
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
     };
 
     // 生成 JWT
@@ -78,8 +95,8 @@ pub async fn registry_user(
         &Header::default(),
         &my_claims,
         &EncodingKey::from_secret("realworld".as_ref()),
-    ).unwrap();
-
+    )
+    .unwrap();
 
     Ok(web::Json(UserWrapper {
         user: UserResponse {
@@ -88,19 +105,23 @@ pub async fn registry_user(
             token,
             bio: None,
             image: None,
-        }
+        },
     }))
 }
 
 #[get("")]
-pub async fn current_user(request: HttpRequest, session_state: SessionState, pool: web::Data<Pool>) -> Result<impl Responder> {
+pub async fn current_user(
+    session_state: SessionState,
+    pool: web::Data<Pool>,
+) -> Result<impl Responder> {
     log::info!("current_user: session_state: {:?}", session_state);
     let SessionState { user_id, token } = session_state;
-    
+
     let user = web::block(move || {
         let user = select_user_by_id(&pool, user_id);
         user
-    }).await??;
+    })
+    .await??;
     Ok(web::Json(UserWrapper {
         user: UserResponse {
             username: user.username,
@@ -108,5 +129,31 @@ pub async fn current_user(request: HttpRequest, session_state: SessionState, poo
             token,
             bio: None,
             image: None,
-        }
-    }))}
+        },
+    }))
+}
+
+#[put("")]
+pub async fn update_user(
+    session_state: SessionState,
+    pool: web::Data<Pool>,
+    json: web::Json<UserWrapper<UserUpdateForm>>,
+) -> Result<impl Responder> {
+    let SessionState { user_id, token } = session_state;
+
+    let user = web::block(move || {
+        update_user_by_id(&pool, user_id, json.into_inner().user)?;
+        select_user_by_id(&pool, user_id)
+    })
+    .await??;
+
+    Ok(web::Json(UserWrapper {
+        user: UserResponse {
+            username: user.username,
+            email: user.email,
+            token,
+            bio: None,
+            image: None,
+        },
+    }))
+}
