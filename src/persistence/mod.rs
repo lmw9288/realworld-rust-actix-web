@@ -1,4 +1,4 @@
-use crate::models::{UserEntity, UserUpdateForm};
+use crate::models::{ArticleCreateForm, ArticleEntity, UserEntity, UserUpdateForm};
 use crate::utils::encrypt_password;
 use actix_web::http::StatusCode;
 use derive_more::{Display, Error, From};
@@ -6,6 +6,7 @@ use log::info;
 use mysql::prelude::*;
 use mysql::{params, Error, Params, Pool, QueryWithParams, Value};
 use std::collections::HashMap;
+use slugify::slugify;
 
 #[derive(Debug, Display, Error, From)]
 pub enum PersistenceError {
@@ -168,4 +169,60 @@ pub fn update_user_by_id(
     //     log::info!("update user error");
     //     Err(PersistenceError::Unknown)
     // }
+}
+
+pub fn insert_article(
+    pool: &Pool,
+    create_form: ArticleCreateForm,
+    user_id: u64,
+) -> Result<u64, PersistenceError> {
+    let mut conn = pool.get_conn()?;
+
+    let last_insert_id = conn.exec_drop(
+        "insert into article(title, slug, description, body, created_at, updated_at, user_id) \
+    values (:title, :slug, :description, :body, :created_at, :updated_at, :user_id)",
+        params! {
+            "title" => &create_form.title,
+            "slug" => slugify!(&create_form.title),
+            "description" => create_form.description,
+            "body" => create_form.body,
+            "created_at" => chrono::Utc::now().to_rfc3339(),
+            "updated_at" => chrono::Utc::now().to_rfc3339(),
+            "user_id" => user_id,
+        },
+    )
+    .map(|_| conn.last_insert_id())?;
+
+    if last_insert_id > 0 {
+        Ok(last_insert_id)
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}
+
+pub fn select_article_by_id(pool: &Pool, id: u64) -> Result<ArticleEntity, PersistenceError> {
+    let mut conn = pool.get_conn()?;
+
+    // 使用参数化查询以避免SQL注入风险
+    let article = conn
+        .exec_map(
+            "SELECT id, title, slug, description, body, created_at, updated_at FROM article WHERE id = :id limit 1",
+            params! {"id" => id},
+            |(id, title, slug, description, body, created_at, updated_at)| {
+            ArticleEntity {
+                id,
+                title,
+                slug,
+                description,
+                body,
+                created_at,
+                updated_at,
+            }
+        })?
+        .into_iter()
+        .next();
+    match article {
+        None => Err(PersistenceError::Unknown),
+        Some(article) => Ok(article),
+    }
 }

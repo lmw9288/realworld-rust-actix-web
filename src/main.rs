@@ -77,9 +77,16 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(
                 // 不需要登录的服务
-                web::scope("/api/users")
+                    web::scope("/api/users")
                     .service(routes::login_user)
-                    .service(routes::registry_user)
+                    .service(routes::registry_user),
+            )
+            .service(
+                web::scope("/api/articles")
+                    .service(routes::list_articles)
+                    .service(routes::create_article)
+                    .service(routes::list_articles_feed)
+                    .service(routes::single_article)
             )
             .service(
                 web::scope("/api/user")

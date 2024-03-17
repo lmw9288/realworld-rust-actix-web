@@ -2,18 +2,25 @@ use std::ops::Add;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use actix_web::{error, Error, get, HttpMessage, HttpRequest, post, put, Responder, Result, web};
 use actix_web::dev::ServiceRequest;
 use actix_web::http::StatusCode;
+use actix_web::{error, get, post, put, web, Error, HttpMessage, HttpRequest, Responder, Result};
+use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone, Utc};
 use jsonwebtoken::{EncodingKey, Header};
-use mysql::Pool;
+use mysql::{serde_json, Pool};
+use mysql_common::time::format_description::well_known::iso8601::FormattedComponents::Offset;
+use mysql_common::time::UtcOffset;
 
 use realworld_rust_actix_web::SessionState;
 
 use crate::models::{
-    Claims, UserLogin, UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper,
+    ArticleCreateForm, ArticleResponse, ArticleWrapper, ArticlesWrapper, Claims, UserLogin,
+    UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper,
 };
-use crate::persistence::{insert_user, select_user_by_email, select_user_by_id, update_user_by_id};
+use crate::persistence::{
+    insert_article, insert_user, select_article_by_id, select_user_by_email, select_user_by_id,
+    update_user_by_id,
+};
 use crate::utils::verify_password;
 
 #[post("/login")]
@@ -52,7 +59,7 @@ pub async fn login_user(
             user: UserResponse {
                 username: user.username,
                 email: user.email,
-                token,
+                token: Some(token),
                 bio: None,
                 image: None,
             },
@@ -102,7 +109,7 @@ pub async fn registry_user(
         user: UserResponse {
             username: user.username,
             email: user.email,
-            token,
+            token: Some(token),
             bio: None,
             image: None,
         },
@@ -126,7 +133,7 @@ pub async fn current_user(
         user: UserResponse {
             username: user.username,
             email: user.email,
-            token,
+            token: Some(token),
             bio: None,
             image: None,
         },
@@ -151,9 +158,93 @@ pub async fn update_user(
         user: UserResponse {
             username: user.username,
             email: user.email,
-            token,
+            token: Some(token),
             bio: None,
             image: None,
+        },
+    }))
+}
+
+#[get("")]
+pub async fn list_articles() -> Result<impl Responder> {
+    Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
+        articles: vec![],
+        articles_count: 0,
+    }))
+}
+
+#[post("")]
+pub async fn create_article(
+    session_state: SessionState,
+    pool: web::Data<Pool>,
+    data: web::Json<ArticleWrapper<ArticleCreateForm>>,
+) -> Result<impl Responder> {
+    let user_id = session_state.user_id;
+
+    let article = web::block(move || {
+        let last_insert_id = insert_article(&pool, data.0.article, user_id)?;
+        select_article_by_id(&pool, last_insert_id)
+    })
+    .await??;
+
+    // let tz_offset = FixedOffset::east(8 * 3600);
+    // let t = tz_offset.from_local_datetime(&article.created_at).unwrap().to_rfc3339();
+    // log::info!("t = {}", t);
+    Ok(web::Json(ArticleWrapper {
+        article: ArticleResponse {
+            title: article.title,
+            slug: article.slug,
+            description: article.description,
+            body: article.body,
+            created_at: Utc::now().to_rfc3339(),
+            updated_at: Utc::now().to_rfc3339(),
+            favorites_count: 0,
+            favorited: false,
+            tag_list: vec![],
+            author: UserResponse {
+                username: "".to_owned(),
+                email: "".to_owned(),
+                token: None,
+                bio: None,
+                image: None,
+            },
+        },
+    }))
+}
+
+#[get("/feed")]
+pub async fn list_articles_feed(
+    session_state: SessionState,
+    pool: web::Data<Pool>,
+) -> Result<impl Responder> {
+    Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
+        articles: vec![],
+        articles_count: 0,
+    }))
+}
+
+#[get("/{slug}")]
+pub async fn single_article(path: web::Path<(String)>) -> Result<impl Responder> {
+    log::info!("single_article: path: {:?}", path);
+
+    Ok(web::Json(ArticleWrapper {
+        article: ArticleResponse {
+            title: "".to_string(),
+            slug: "".to_string(),
+            description: "".to_string(),
+            body: "".to_string(),
+            created_at: Utc::now().to_rfc3339(),
+            updated_at: Utc::now().to_rfc3339(),
+            favorites_count: 1,
+            favorited: false,
+            tag_list: vec![],
+            author: UserResponse {
+                username: "".to_string(),
+                email: "".to_string(),
+                token: None,
+                bio: None,
+                image: None,
+            },
         },
     }))
 }
