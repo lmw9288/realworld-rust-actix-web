@@ -1,10 +1,10 @@
-use chrono::{Local, NaiveDateTime, Utc};
-use mysql::prelude::*;
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: u64,
+    pub sub: i64,
     pub exp: u64,
 }
 
@@ -16,12 +16,13 @@ where
     pub user: T,
 }
 
-#[derive(Debug, Deserialize, Serialize, FromRow)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct UserEntity {
-    pub id: u64,
+    pub id: i64,
     pub username: String,
     pub email: String,
-    pub password: String,
+    // pub password: String,
+
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -79,6 +80,13 @@ pub struct ArticleCreateForm {
     pub description: String,
     pub body: String,
     pub tagList: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ArticleUpdateForm {
+    pub title: String,
+    pub description: String,
+    pub body: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

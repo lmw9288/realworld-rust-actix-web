@@ -9,7 +9,7 @@ mod models;
 
 #[derive(Debug, Clone)]
 pub struct SessionState {
-    pub user_id: u64,
+    pub user_id: i64,
     pub token: String,
 }
 

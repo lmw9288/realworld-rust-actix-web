@@ -1,32 +1,24 @@
 use std::{
-    env,
-    fmt,
     borrow::Cow,
+    env, fmt,
     sync::{Arc, Mutex, RwLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use actix_web::{
-    App,
-    dev::{Payload, ServiceRequest},
     dev::Service,
-    Error,
+    dev::{Payload, ServiceRequest},
     error::ErrorUnauthorized,
-    FromRequest,
     http::header,
     http::header::{Header, HeaderValue, InvalidHeaderValue, TryIntoHeaderValue},
-    HttpMessage,
-    HttpRequest,
-    HttpResponse,
-    HttpServer,
     middleware::Logger,
-    Result,
     web,
     web::{BufMut, BytesMut},
+    App, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, HttpServer, Result,
 };
 use actix_web_httpauth::{
-    extractors::{AuthenticationError, AuthExtractorConfig, bearer},
     extractors::bearer::{BearerAuth, Config},
+    extractors::{bearer, AuthExtractorConfig, AuthenticationError},
     headers::authorization,
     headers::authorization::{ParseError, Scheme},
     middleware::HttpAuthentication,
@@ -34,25 +26,27 @@ use actix_web_httpauth::{
 use dotenvy::dotenv;
 use env_logger::Env;
 use futures::{
-    future::{err, LocalBoxFuture, ok, Ready},
+    future::{err, ok, LocalBoxFuture, Ready},
     FutureExt,
 };
 use jsonwebtoken::{DecodingKey, Validation};
+use sqlx::mysql::MySqlPoolOptions;
+use sqlx::{MySql, MySqlPool, Pool};
 
 use crate::models::Claims;
 
 mod models;
-mod routes;
 mod persistence;
+mod routes;
 mod utils;
 
-fn get_conn_builder() -> mysql::OptsBuilder {
-    mysql::OptsBuilder::new()
-        .ip_or_hostname(Some("127.0.0.1"))
-        .tcp_port(3306)
-        .db_name(Some("realworld"))
-        .user(Some("root"))
-        .pass(Some(""))
+async fn get_conn_builder() -> MySqlPool {
+    // We create a single connection pool for SQLx that's shared across the whole application.
+    // This saves us from opening a new connection for every API call, which is wasteful.
+    MySqlPoolOptions::new()
+        .connect("mysql://root:@127.0.0.1:3306/realworld")
+        .await
+        .expect("could not connect to database_url")
 }
 
 #[actix_web::main]
@@ -65,10 +59,7 @@ async fn main() -> std::io::Result<()> {
 
     let i = Box::new(5);
 
-    let builder = get_conn_builder();
-
-    let pool = mysql::Pool::new(builder).unwrap();
-
+    let pool = get_conn_builder().await;
 
     let pool_data = web::Data::new(pool);
     HttpServer::new(move || {
@@ -77,28 +68,27 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(
                 // 不需要登录的服务
-                    web::scope("/api/users")
-                    .service(routes::login_user)
+                web::scope("/api/users")
+                    // .service(routes::login_user)
                     .service(routes::registry_user),
             )
-            .service(
-                web::scope("/api/articles")
-                    .service(routes::list_articles)
-                    .service(routes::create_article)
-                    .service(routes::list_articles_feed)
-                    .service(routes::single_article)
-            )
-            .service(
-                web::scope("/api/user")
-                    .service(routes::current_user)
-                    .service(routes::update_user)
-            )
+            // .service(
+            //     web::scope("/api/articles")
+            //         .service(routes::list_articles)
+            //         .service(routes::create_article)
+            //         .service(routes::list_articles_feed)
+            //         .service(routes::single_article),
+            // )
+            // .service(
+            //     web::scope("/api/user")
+            //         .service(routes::current_user)
+            //         .service(routes::update_user),
+            // )
     })
-        .bind(("127.0.0.1", 3001))?
-        .run()
-        .await
+    .bind(("127.0.0.1", 3000))?
+    .run()
+    .await
 }
-
 
 // async fn authenticate(req: ServiceRequest, auth: BearerAuth) -> Result<ServiceRequest, (Error, ServiceRequest)> {
 //     // 从 HTTP 请求中提取 JWT
