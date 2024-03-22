@@ -21,7 +21,7 @@ pub struct UserEntity {
     pub id: i64,
     pub username: String,
     pub email: String,
-    // pub password: String,
+    pub password: String,
 
 }
 
