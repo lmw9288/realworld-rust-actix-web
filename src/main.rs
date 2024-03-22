@@ -69,20 +69,20 @@ async fn main() -> std::io::Result<()> {
             .service(
                 // 不需要登录的服务
                 web::scope("/api/users")
-                    .service(routes::login_user)
-                    .service(routes::registry_user),
+                    .service(routes::users::login_user)
+                    .service(routes::users::registry_user),
             )
-            // .service(
-            //     web::scope("/api/articles")
-            //         .service(routes::list_articles)
-            //         .service(routes::create_article)
+            .service(
+                web::scope("/api/articles")
+                    .service(routes::articles::list_articles)
+                    .service(routes::articles::create_article)
             //         .service(routes::list_articles_feed)
             //         .service(routes::single_article),
-            // )
+            )
             .service(
                 web::scope("/api/user")
-                    .service(routes::current_user)
-                    .service(routes::update_user),
+                    .service(routes::users::current_user)
+                    .service(routes::users::update_user),
             )
     })
     .bind(("127.0.0.1", 3000))?

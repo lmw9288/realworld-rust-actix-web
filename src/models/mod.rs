@@ -1,4 +1,3 @@
-use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -22,7 +21,6 @@ pub struct UserEntity {
     pub username: String,
     pub email: String,
     pub password: String,
-
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -90,6 +88,16 @@ pub struct ArticleUpdateForm {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct ArticleQuery {
+    pub tag: Option<String>,
+    pub author: Option<String>,
+    pub favorited: Option<String>,
+
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ArticleResponse {
     pub title: String,
     pub slug: String,
@@ -109,13 +117,13 @@ pub struct ArticleResponse {
 
 #[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct ArticleEntity {
-    pub id: u64,
+    pub id: i64,
     pub title: String,
     pub slug: String,
     pub body: String,
     pub description: String,
     #[serde(rename = "createdAt")]
-    pub created_at: NaiveDateTime,
+    pub created_at: chrono::NaiveDateTime,
     #[serde(rename = "updatedAt")]
-    pub updated_at: NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
 }
