@@ -202,7 +202,7 @@ pub async fn select_article_by_id(
 //
 // }
 
-pub async fn follow_user_by(
+pub async fn insert_follow_by_user(
     pool: &MySqlPool,
     user_id: i64,
     followee_user_id: i64,
@@ -217,6 +217,26 @@ pub async fn follow_user_by(
 
     if result.last_insert_id() > 0 {
         Ok(result.last_insert_id() as i64)
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}
+
+pub async fn delete_follow_by_user(
+    pool: &MySqlPool,
+    user_id: i64,
+    followee_user_id: i64,
+) -> Result<(), PersistenceError> {
+    let result = sqlx::query!(
+        "delete from user_follow where follower_user_id = ? and followee_user_id = ?",
+        user_id,
+        followee_user_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() > 0 {
+        Ok(())
     } else {
         Err(PersistenceError::Unknown)
     }

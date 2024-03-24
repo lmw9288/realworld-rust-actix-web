@@ -84,7 +84,11 @@ async fn main() -> std::io::Result<()> {
                     .service(routes::users::current_user)
                     .service(routes::users::update_user),
             )
-            .service(web::scope("/api/profiles").service(routes::profiles::follow_user))
+            .service(
+                web::scope("/api/profiles")
+                    .service(routes::profiles::follow_user)
+                    .service(routes::profiles::delete_follow_user),
+            )
     })
     .bind(("127.0.0.1", 3000))?
     .run()
