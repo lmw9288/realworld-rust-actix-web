@@ -8,7 +8,7 @@ use sqlx::{query_builder, MySqlPool, QueryBuilder};
 
 //
 #[get("")]
-pub async fn list_articles(query: web::Query<ArticleQuery>) -> actix_web::Result<impl Responder> {
+pub async fn list_articles(_query: web::Query<ArticleQuery>) -> actix_web::Result<impl Responder> {
     // log::info!("query = {:?}", query);
 
     // let query_builder = QueryBuilder::new("select id from article where ");

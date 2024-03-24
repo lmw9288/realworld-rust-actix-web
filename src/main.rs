@@ -41,10 +41,11 @@ mod routes;
 mod utils;
 
 async fn get_conn_builder() -> MySqlPool {
+    let database_url = env::var("DATABASE_URL").expect("database url is empty!!!");
     // We create a single connection pool for SQLx that's shared across the whole application.
     // This saves us from opening a new connection for every API call, which is wasteful.
     MySqlPoolOptions::new()
-        .connect("mysql://root:@127.0.0.1:3306/realworld")
+        .connect(&database_url)
         .await
         .expect("could not connect to database_url")
 }
@@ -75,15 +76,15 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/articles")
                     .service(routes::articles::list_articles)
-                    .service(routes::articles::create_article)
-            //         .service(routes::list_articles_feed)
-            //         .service(routes::single_article),
+                    .service(routes::articles::create_article), //         .service(routes::list_articles_feed)
+                                                                //         .service(routes::single_article),
             )
             .service(
                 web::scope("/api/user")
                     .service(routes::users::current_user)
                     .service(routes::users::update_user),
             )
+            .service(web::scope("/api/profiles").service(routes::profiles::follow_user))
     })
     .bind(("127.0.0.1", 3000))?
     .run()

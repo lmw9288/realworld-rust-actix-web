@@ -48,7 +48,9 @@ pub async fn insert_user(
     let hash_password = encrypt_password(password);
 
     let result = sqlx::query!(
-        "INSERT INTO user (username, email, password) VALUES (?, ?, ?)",
+        "INSERT INTO user (created_at, updated_at, username, email, password) VALUES (?, ?, ?, ?, ?)",
+        Utc::now().naive_utc(),
+        Utc::now().naive_utc(),
         username,
         email,
         hash_password,
@@ -88,6 +90,21 @@ pub async fn select_user_by_email(
     .await?;
     Ok(user)
 }
+
+pub async fn select_user_by_username(
+    pool: &MySqlPool,
+    username: String,
+) -> Result<UserEntity, PersistenceError> {
+    let user = sqlx::query_as!(
+        UserEntity,
+        "SELECT id, username, email, password FROM user WHERE username = ? order by id desc limit 1",
+        (username)
+    )
+        .fetch_one(pool)
+        .await?;
+    Ok(user)
+}
+
 //
 pub async fn update_user_by_id(
     pool: &MySqlPool,
@@ -184,3 +201,23 @@ pub async fn select_article_by_id(
 // pub fn update_article_by_slug(pool: &Pool) {
 //
 // }
+
+pub async fn follow_user_by(
+    pool: &MySqlPool,
+    user_id: i64,
+    followee_user_id: i64,
+) -> Result<i64, PersistenceError> {
+    let result = sqlx::query!(
+        "insert user_follow(follower_user_id, followee_user_id) values (?, ?)",
+        user_id,
+        followee_user_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.last_insert_id() > 0 {
+        Ok(result.last_insert_id() as i64)
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}

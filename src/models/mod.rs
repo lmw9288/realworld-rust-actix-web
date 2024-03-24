@@ -127,3 +127,16 @@ pub struct ArticleEntity {
     #[serde(rename = "updatedAt")]
     pub updated_at: chrono::NaiveDateTime,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProfileWrapper<T> {
+    pub profile: T,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProfileResponse {
+    pub username: String,
+    pub bio: Option<String>,
+    pub image: Option<String>,
+    pub following: bool,
+}
