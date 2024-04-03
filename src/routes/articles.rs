@@ -1,15 +1,14 @@
-use std::ops::Deref;
 use crate::models::{
     ArticleCreateForm, ArticleQuery, ArticleResponse, ArticleUpdateForm, ArticleWrapper,
     ArticlesWrapper, CommentResponse, CommentsWrapper, UserResponse,
 };
-use crate::persistence::{
-    insert_article, select_article_by_id, select_articles_by_query, select_user_by_id,
-};
+use crate::persistence::{delete_article_by_slug, insert_article, select_article_by_id, select_articles_by_query, select_user_by_id};
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
 use realworld_rust_actix_web::SessionState;
 use sqlx::{query_builder, MySqlPool, QueryBuilder};
+use std::ops::Deref;
+use actix_web::web::delete;
 
 //
 #[get("")]
@@ -36,7 +35,7 @@ pub async fn list_articles(
                 updated_at: a.updated_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
                 favorited: false,
                 favorites_count: 0,
-                tag_list: vec![],
+                tag_list: serde_json::from_str(&a.tag_list).unwrap_or(vec![]),
                 author: UserResponse {
                     username: "".to_string(),
                     email: "".to_string(),
@@ -85,7 +84,7 @@ pub async fn create_article(
                 .to_string(),
             favorites_count: 0,
             favorited: false,
-            tag_list: vec![],
+            tag_list: serde_json::from_str(&article.tag_list).unwrap_or(vec![]),
             author: UserResponse {
                 username: user.username,
                 email: user.email,
@@ -106,9 +105,11 @@ pub async fn delete_article(
     pool: web::Data<MySqlPool>,
     path: web::Path<(String)>,
 ) -> actix_web::Result<impl Responder> {
+    let user_id = session_state.user_id;
     let slug = path.into_inner();
     log::info!("delete_article: slug: {:?}", slug);
-
+    
+    delete_article_by_slug(&pool, user_id, slug).await?;
     Ok(web::Json(()))
 }
 

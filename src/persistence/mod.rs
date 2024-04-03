@@ -5,7 +5,9 @@ use slugify::slugify;
 use sqlx::any::AnyValue;
 use sqlx::{Encode, Execute, MySqlPool, QueryBuilder};
 
-use crate::models::{ArticleCreateForm, ArticleEntity, ArticleQuery, UserEntity, UserUpdateForm};
+use crate::models::{
+    ArticleCreateForm, ArticleEntity, ArticleQuery, TagEntity, UserEntity, UserUpdateForm,
+};
 use crate::utils::encrypt_password;
 
 #[derive(Debug, Display, Error, From)]
@@ -111,7 +113,7 @@ pub async fn update_user_by_id(
     id: i64,
     update_form: UserUpdateForm,
 ) -> Result<(), PersistenceError> {
-    // let mut conn = pool.get_conn()?;
+    // let() mut conn = pool.get_conn()?;
 
     // 设置要更新的字段和对应的值
     let mut fields_values = vec![];
@@ -166,13 +168,14 @@ pub async fn insert_article(
     // let mut conn = pool.get_conn()?;
 
     let result = sqlx::query!(
-        "insert into article(title, slug, description, body, created_at, updated_at, user_id) values (?, ?, ?, ?, ?, ?, ?)",
+        "insert into article(title, slug, description, body, created_at, updated_at, tag_list, user_id) values (?, ?, ?, ?, ?, ?, ?, ?)",
         create_form.title,
         slugify::slugify!(&create_form.title),
         create_form.description,
         create_form.body,
         Utc::now().naive_utc(),
         Utc::now().naive_utc(),
+        serde_json::to_string(&create_form.tagList).unwrap_or("[]".to_string()),
         user_id
     ).execute(pool).await?;
 
@@ -201,10 +204,12 @@ pub async fn select_articles_by_query(
     let articles = sqlx::query_as!(
         ArticleEntity,
         "SELECT a.id as id, a.title as title, a.slug as slug, a.description as description, \
-        a.body as body, a.created_at as created_at, a.updated_at as updated_at \
+        a.body as body, a.created_at as created_at, a.updated_at as updated_at, a.tag_list \
     FROM article a join tag t on a.id = t.article_id \
-    where t.name = ?",
+    where t.name = ? limit ?, ?",
         query.tag,
+        query.offset.unwrap_or(0),
+        query.limit.unwrap_or(20)
     )
     .fetch_all(pool)
     .await?;
@@ -220,10 +225,12 @@ pub async fn select_article_by_id(
 
     // 使用参数化查询以避免SQL注入风险
     let article = sqlx::query_as!(ArticleEntity,
-            "SELECT id, title, slug, description, body, created_at, updated_at FROM article WHERE id = ? limit 1",
+            "SELECT id, title, slug, description, body, created_at, updated_at, tag_list FROM article WHERE id = ? limit 1",
         (id)
-
         ).fetch_one(pool).await?;
+    // let tags = sqlx::query_scalar!("SELECT name FROM tag WHERE article_id = ?", (id))
+    //     .fetch_all(pool)
+    //     .await?;
     Ok(article)
 }
 //
@@ -246,6 +253,25 @@ pub async fn insert_follow_by_user(
 
     if result.last_insert_id() > 0 {
         Ok(result.last_insert_id() as i64)
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}
+
+pub async fn delete_article_by_slug(
+    pool: &MySqlPool,
+    user_id: i64,
+    slug: String,
+) -> Result<(), PersistenceError> {
+    let result = sqlx::query!(
+        "delete from article where slug = ? and user_id = ?",
+        slug,
+        user_id
+    )
+    .execute(pool)
+    .await?;
+    if (result.rows_affected() > 0) {
+        Ok(())
     } else {
         Err(PersistenceError::Unknown)
     }
