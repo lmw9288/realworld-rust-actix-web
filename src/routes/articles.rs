@@ -1,8 +1,11 @@
+use std::ops::Deref;
 use crate::models::{
     ArticleCreateForm, ArticleQuery, ArticleResponse, ArticleUpdateForm, ArticleWrapper,
     ArticlesWrapper, CommentResponse, CommentsWrapper, UserResponse,
 };
-use crate::persistence::{insert_article, select_article_by_id, select_user_by_id};
+use crate::persistence::{
+    insert_article, select_article_by_id, select_articles_by_query, select_user_by_id,
+};
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
 use realworld_rust_actix_web::SessionState;
@@ -10,18 +13,39 @@ use sqlx::{query_builder, MySqlPool, QueryBuilder};
 
 //
 #[get("")]
-pub async fn list_articles(_query: web::Query<ArticleQuery>) -> actix_web::Result<impl Responder> {
-    // log::info!("query = {:?}", query);
+pub async fn list_articles(
+    pool: web::Data<MySqlPool>,
+    query: web::Query<ArticleQuery>,
+) -> actix_web::Result<impl Responder> {
+    log::info!("list_articles query = {:?}", query);
 
-    // let query_builder = QueryBuilder::new("select id from article where ");
+    let query = query.into_inner();
 
-    // let field_values = vec![];
-    // if query.tag.is_some() {
-    //     field_values.push(("tag", query.tag.unwrap()))
-    // }
+    let articles = select_articles_by_query(&pool, query).await?;
+    // let user = select_user_by_id(&pool, user_id).await?;
 
     Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
-        articles: vec![],
+        articles: articles
+            .into_iter()
+            .map(|a| ArticleResponse {
+                title: a.title,
+                slug: a.slug,
+                description: a.description,
+                body: a.body,
+                created_at: a.created_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+                updated_at: a.updated_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+                favorited: false,
+                favorites_count: 0,
+                tag_list: vec![],
+                author: UserResponse {
+                    username: "".to_string(),
+                    email: "".to_string(),
+                    token: None,
+                    bio: None,
+                    image: None,
+                },
+            })
+            .collect(),
         articles_count: 0,
     }))
 }
@@ -33,9 +57,11 @@ pub async fn create_article(
     pool: web::Data<MySqlPool>,
     data: web::Json<ArticleWrapper<ArticleCreateForm>>,
 ) -> actix_web::Result<impl Responder> {
+    log::info!("create_article data = {:?}", data);
     let user_id = session_state.user_id;
-
-    let last_insert_id = insert_article(&pool, data.into_inner().article, user_id).await?;
+    let article = data.into_inner().article;
+    // let tagList = article.clone().tagList;
+    let last_insert_id = insert_article(&pool, article, user_id).await?;
     let article = select_article_by_id(&pool, last_insert_id).await?;
     let user = select_user_by_id(&pool, user_id).await?;
 

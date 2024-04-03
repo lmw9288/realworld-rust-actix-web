@@ -72,7 +72,7 @@ where
     pub article: T,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ArticleCreateForm {
     pub title: String,
     pub description: String,
@@ -176,4 +176,12 @@ pub struct CommentsWrapper<T> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TagsWrapper {
     pub tags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, FromRow)]
+pub struct TagEntity {
+    pub id: i64,
+    pub name: String,
+    pub article_id: i64,
+    pub user_id: i64,
 }

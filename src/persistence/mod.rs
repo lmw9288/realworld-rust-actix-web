@@ -5,7 +5,7 @@ use slugify::slugify;
 use sqlx::any::AnyValue;
 use sqlx::{Encode, Execute, MySqlPool, QueryBuilder};
 
-use crate::models::{ArticleCreateForm, ArticleEntity, UserEntity, UserUpdateForm};
+use crate::models::{ArticleCreateForm, ArticleEntity, ArticleQuery, UserEntity, UserUpdateForm};
 use crate::utils::encrypt_password;
 
 #[derive(Debug, Display, Error, From)]
@@ -176,12 +176,41 @@ pub async fn insert_article(
         user_id
     ).execute(pool).await?;
 
+    for tag in create_form.tagList {
+        sqlx::query!(
+            "insert into tag(name, article_id, user_id) values (?, ?, ?)",
+            tag,
+            result.last_insert_id(),
+            user_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
     if result.last_insert_id() > 0 {
         Ok(result.last_insert_id())
     } else {
         Err(PersistenceError::Unknown)
     }
 }
+
+pub async fn select_articles_by_query(
+    pool: &MySqlPool,
+    query: ArticleQuery,
+) -> Result<Vec<ArticleEntity>, PersistenceError> {
+    let articles = sqlx::query_as!(
+        ArticleEntity,
+        "SELECT a.id as id, a.title as title, a.slug as slug, a.description as description, \
+        a.body as body, a.created_at as created_at, a.updated_at as updated_at \
+    FROM article a join tag t on a.id = t.article_id \
+    where t.name = ?",
+        query.tag,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(articles)
+}
+
 //
 pub async fn select_article_by_id(
     pool: &MySqlPool,
