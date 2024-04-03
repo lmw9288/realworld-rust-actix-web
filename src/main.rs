@@ -5,6 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use actix_web::web::service;
 use actix_web::{
     dev::Service,
     dev::{Payload, ServiceRequest},
@@ -76,8 +77,15 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/articles")
                     .service(routes::articles::list_articles)
-                    .service(routes::articles::create_article), //         .service(routes::list_articles_feed)
-                                                                //         .service(routes::single_article),
+                    .service(routes::articles::create_article)
+                    .service(routes::articles::delete_article)
+                    .service(routes::articles::update_article)
+                    .service(routes::articles::list_articles_feed)
+                    .service(routes::articles::single_article)
+                    .service(routes::comments::get_article_comments)
+                    .service(routes::comments::create_article_comments)
+                    .service(routes::articles::favorite_article)
+                    .service(routes::articles::unfavorite_article),
             )
             .service(
                 web::scope("/api/user")
@@ -90,6 +98,7 @@ async fn main() -> std::io::Result<()> {
                     .service(routes::profiles::delete_follow_user)
                     .service(routes::profiles::get_profile),
             )
+            .service(web::scope("/api/tags").service(routes::tags::all_tags))
     })
     .bind(("127.0.0.1", 3000))?
     .run()

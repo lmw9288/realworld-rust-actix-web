@@ -82,9 +82,9 @@ pub struct ArticleCreateForm {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ArticleUpdateForm {
-    pub title: String,
-    pub description: String,
-    pub body: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub body: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -129,7 +129,10 @@ pub struct ArticleEntity {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ProfileWrapper<T> {
+pub struct ProfileWrapper<T>
+where
+    T: serde::Serialize,
+{
     pub profile: T,
 }
 
@@ -139,4 +142,38 @@ pub struct ProfileResponse {
     pub bio: Option<String>,
     pub image: Option<String>,
     pub following: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CommentResponse {
+    pub id: i64,
+    pub body: String,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+    pub author: UserResponse,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CommentCreateForm {
+    pub body: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CommentWrapper<T>
+where
+    T: serde::Serialize,
+{
+    pub comment: T,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CommentsWrapper<T> {
+    pub comments: Vec<T>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TagsWrapper {
+    pub tags: Vec<String>,
 }
