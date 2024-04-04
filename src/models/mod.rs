@@ -127,6 +127,7 @@ pub struct ArticleEntity {
     #[serde(rename = "updatedAt")]
     pub updated_at: chrono::NaiveDateTime,
     pub tag_list: String,
+    pub user_id: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

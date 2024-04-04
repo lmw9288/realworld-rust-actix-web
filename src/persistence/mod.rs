@@ -203,8 +203,8 @@ pub async fn select_articles_by_query(
 ) -> Result<Vec<ArticleEntity>, PersistenceError> {
     let articles = sqlx::query_as!(
         ArticleEntity,
-        "SELECT a.id as id, a.title as title, a.slug as slug, a.description as description, \
-        a.body as body, a.created_at as created_at, a.updated_at as updated_at, a.tag_list \
+        "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, \
+        a.tag_list, a.user_id \
     FROM article a join tag t on a.id = t.article_id \
     where t.name = ? limit ?, ?",
         query.tag,
@@ -225,8 +225,26 @@ pub async fn select_article_by_id(
 
     // 使用参数化查询以避免SQL注入风险
     let article = sqlx::query_as!(ArticleEntity,
-            "SELECT id, title, slug, description, body, created_at, updated_at, tag_list FROM article WHERE id = ? limit 1",
+            "SELECT id, title, slug, description, body, created_at, updated_at, tag_list, user_id FROM article WHERE id = ? limit 1",
         (id)
+        ).fetch_one(pool).await?;
+    // let tags = sqlx::query_scalar!("SELECT name FROM tag WHERE article_id = ?", (id))
+    //     .fetch_all(pool)
+    //     .await?;
+    Ok(article)
+}
+
+pub async fn select_article_by_slug(
+    pool: &MySqlPool,
+    slug: String,
+) -> Result<ArticleEntity, PersistenceError> {
+    // let mut conn = pool.get_conn()?;
+
+    // 使用参数化查询以避免SQL注入风险
+    let article = sqlx::query_as!(ArticleEntity,
+            "SELECT id, title, slug, description, body, created_at, updated_at, tag_list, user_id FROM article \
+            WHERE slug = ? order by id desc limit 1",
+        (slug)
         ).fetch_one(pool).await?;
     // let tags = sqlx::query_scalar!("SELECT name FROM tag WHERE article_id = ?", (id))
     //     .fetch_all(pool)
@@ -271,6 +289,46 @@ pub async fn delete_article_by_slug(
     .execute(pool)
     .await?;
     if (result.rows_affected() > 0) {
+        Ok(())
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}
+
+pub async fn insert_article_favorite(
+    pool: &MySqlPool,
+    user_id: i64,
+    article_id: i64,
+) -> Result<(i64), PersistenceError> {
+    let result = sqlx::query!(
+        "insert article_favorite(user_id, article_id) values (?, ?)",
+        user_id,
+        article_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.last_insert_id() > 0 {
+        Ok(result.last_insert_id() as i64)
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}
+
+pub async fn delete_article_favorite(
+    pool: &MySqlPool,
+    user_id: i64,
+    article_id: i64,
+) -> Result<(), PersistenceError> {
+    let result = sqlx::query!(
+        "delete from article_favorite where user_id = ? and article_id = ?",
+        user_id,
+        article_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() > 0 {
         Ok(())
     } else {
         Err(PersistenceError::Unknown)

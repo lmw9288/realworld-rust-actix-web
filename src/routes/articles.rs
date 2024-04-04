@@ -1,14 +1,17 @@
 use crate::models::{
-    ArticleCreateForm, ArticleQuery, ArticleResponse, ArticleUpdateForm, ArticleWrapper,
-    ArticlesWrapper, CommentResponse, CommentsWrapper, UserResponse,
+    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleUpdateForm,
+    ArticleWrapper, ArticlesWrapper, CommentResponse, CommentsWrapper, UserEntity, UserResponse,
 };
-use crate::persistence::{delete_article_by_slug, insert_article, select_article_by_id, select_articles_by_query, select_user_by_id};
+use crate::persistence::{
+    delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
+    select_article_by_id, select_article_by_slug, select_articles_by_query, select_user_by_id,
+};
+use actix_web::web::delete;
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
 use realworld_rust_actix_web::SessionState;
 use sqlx::{query_builder, MySqlPool, QueryBuilder};
 use std::ops::Deref;
-use actix_web::web::delete;
 
 //
 #[get("")]
@@ -26,23 +29,14 @@ pub async fn list_articles(
     Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
         articles: articles
             .into_iter()
-            .map(|a| ArticleResponse {
-                title: a.title,
-                slug: a.slug,
-                description: a.description,
-                body: a.body,
-                created_at: a.created_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
-                updated_at: a.updated_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
-                favorited: false,
-                favorites_count: 0,
-                tag_list: serde_json::from_str(&a.tag_list).unwrap_or(vec![]),
-                author: UserResponse {
+            .map(|a| {
+                // let user = select_user_by_id(&pool, a.user_id).await?;
+                to_article_response(a, UserEntity {
+                    id: 0,
                     username: "".to_string(),
                     email: "".to_string(),
-                    token: None,
-                    bio: None,
-                    image: None,
-                },
+                    password: "".to_string(),
+                })
             })
             .collect(),
         articles_count: 0,
@@ -69,30 +63,7 @@ pub async fn create_article(
     // log::info!("t = {}", t);
 
     let r = ArticleWrapper {
-        article: ArticleResponse {
-            title: article.title,
-            slug: article.slug,
-            description: article.description,
-            body: article.body,
-            created_at: article
-                .created_at
-                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                .to_string(),
-            updated_at: article
-                .updated_at
-                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                .to_string(),
-            favorites_count: 0,
-            favorited: false,
-            tag_list: serde_json::from_str(&article.tag_list).unwrap_or(vec![]),
-            author: UserResponse {
-                username: user.username,
-                email: user.email,
-                token: None,
-                bio: None,
-                image: None,
-            },
-        },
+        article: to_article_response(article, user),
     };
     log::info!("create_article: r = {:?}", r);
 
@@ -108,7 +79,7 @@ pub async fn delete_article(
     let user_id = session_state.user_id;
     let slug = path.into_inner();
     log::info!("delete_article: slug: {:?}", slug);
-    
+
     delete_article_by_slug(&pool, user_id, slug).await?;
     Ok(web::Json(()))
 }
@@ -192,26 +163,14 @@ pub async fn favorite_article(
     path: web::Path<(String)>,
 ) -> actix_web::Result<impl Responder> {
     let slug = path.into_inner();
+    let user_id = session_state.user_id;
+
+    let article = select_article_by_slug(&pool, slug).await?;
+    let user = select_user_by_id(&pool, user_id).await?;
+    insert_article_favorite(&pool, user_id, article.id).await?;
     // log::info!()
     Ok(web::Json(ArticleWrapper {
-        article: ArticleResponse {
-            title: "".to_string(),
-            slug: "".to_string(),
-            description: "".to_string(),
-            body: "".to_string(),
-            created_at: Utc::now().to_rfc3339(),
-            updated_at: Utc::now().to_rfc3339(),
-            favorites_count: 1,
-            favorited: true,
-            tag_list: vec![],
-            author: UserResponse {
-                username: "".to_string(),
-                email: "".to_string(),
-                token: None,
-                bio: None,
-                image: None,
-            },
-        },
+        article: to_article_response(article, user),
     }))
 }
 
@@ -222,24 +181,44 @@ pub async fn unfavorite_article(
     path: web::Path<(String)>,
 ) -> actix_web::Result<impl Responder> {
     let slug = path.into_inner();
+    let user_id = session_state.user_id;
+
+    let article = select_article_by_slug(&pool, slug).await?;
+    let user = select_user_by_id(&pool, user_id).await?;
+    delete_article_favorite(&pool, user_id, article.id).await?;
+
     Ok(web::Json(ArticleWrapper {
-        article: ArticleResponse {
-            title: "".to_string(),
-            slug: "".to_string(),
-            description: "".to_string(),
-            body: "".to_string(),
-            created_at: Utc::now().to_rfc3339(),
-            updated_at: Utc::now().to_rfc3339(),
-            favorites_count: 1,
-            favorited: false,
-            tag_list: vec![],
-            author: UserResponse {
-                username: "".to_string(),
-                email: "".to_string(),
-                token: None,
-                bio: None,
-                image: None,
-            },
-        },
+        article: to_article_response(article, user),
     }))
+}
+
+fn to_article_response(article: ArticleEntity, user: UserEntity) -> ArticleResponse {
+    ArticleResponse {
+        title: article.title,
+        slug: article.slug,
+        description: article.description,
+        body: article.body,
+        created_at: article
+            .created_at
+            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+            .to_string(),
+        updated_at: article
+            .updated_at
+            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+            .to_string(),
+        favorites_count: 0,
+        favorited: false,
+        tag_list: serde_json::from_str(&article.tag_list).unwrap_or(vec![]),
+        author: to_author(user),
+    }
+}
+
+fn to_author(user: UserEntity) -> UserResponse {
+    UserResponse {
+        username: user.username,
+        email: user.email,
+        token: None,
+        bio: None,
+        image: None,
+    }
 }
