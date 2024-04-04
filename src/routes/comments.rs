@@ -1,17 +1,15 @@
 use crate::models::{
-    CommentCreateForm, CommentResponse, CommentWrapper, CommentsWrapper, UserResponse,
+    CommentResponse, CommentWrapper, CommentsWrapper, UserResponse,
 };
 use actix_web::{get, post, web, Responder};
-use realworld_rust_actix_web::SessionState;
-use sqlx::MySqlPool;
 
 #[get("/{slug}/comments")]
 pub async fn get_article_comments(
     // session_state: SessionState,
-    pool: web::Data<MySqlPool>,
-    path: web::Path<String>,
+    // pool: web::Data<MySqlPool>,
+    // path: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
-    let slug = path.into_inner();
+    // let slug = path.into_inner();
     Ok(web::Json(CommentsWrapper::<CommentResponse> {
         comments: vec![],
     }))

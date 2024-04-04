@@ -77,7 +77,8 @@ pub struct ArticleCreateForm {
     pub title: String,
     pub description: String,
     pub body: String,
-    pub tagList: Vec<String>,
+    #[serde(rename = "tagList")]
+    pub tag_list: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -109,7 +110,7 @@ pub struct ArticleResponse {
     pub description: String,
     pub favorited: bool,
     #[serde(rename = "favoritesCount")]
-    pub favorites_count: u32,
+    pub favorites_count: i64,
     #[serde(rename = "tagList")]
     pub tag_list: Vec<String>,
     pub author: UserResponse,
@@ -128,6 +129,8 @@ pub struct ArticleEntity {
     pub updated_at: chrono::NaiveDateTime,
     pub tag_list: String,
     pub user_id: i64,
+
+    pub favorites_count: i64
 }
 
 #[derive(Debug, Deserialize, Serialize)]

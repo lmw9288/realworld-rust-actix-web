@@ -1,13 +1,13 @@
+use core::arch;
+
 use actix_web::http::StatusCode;
-use chrono::{Local, Utc};
+use chrono::Utc;
 use derive_more::{Display, Error, From};
 use slugify::slugify;
-use sqlx::any::AnyValue;
-use sqlx::{Encode, Execute, MySqlPool, QueryBuilder};
+use sqlx::{Execute, MySqlPool, QueryBuilder};
 
-use crate::models::{
-    ArticleCreateForm, ArticleEntity, ArticleQuery, TagEntity, UserEntity, UserUpdateForm,
-};
+use crate::models::{ArticleCreateForm, ArticleEntity, ArticleQuery, UserEntity, UserUpdateForm};
+use crate::routes::articles;
 use crate::utils::encrypt_password;
 
 #[derive(Debug, Display, Error, From)]
@@ -175,11 +175,11 @@ pub async fn insert_article(
         create_form.body,
         Utc::now().naive_utc(),
         Utc::now().naive_utc(),
-        serde_json::to_string(&create_form.tagList).unwrap_or("[]".to_string()),
+        serde_json::to_string(&create_form.tag_list).unwrap_or("[]".to_string()),
         user_id
     ).execute(pool).await?;
 
-    for tag in create_form.tagList {
+    for tag in create_form.tag_list {
         sqlx::query!(
             "insert into tag(name, article_id, user_id) values (?, ?, ?)",
             tag,
@@ -201,19 +201,37 @@ pub async fn select_articles_by_query(
     pool: &MySqlPool,
     query: ArticleQuery,
 ) -> Result<Vec<ArticleEntity>, PersistenceError> {
-    let articles = sqlx::query_as!(
-        ArticleEntity,
-        "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, \
-        a.tag_list, a.user_id \
-    FROM article a join tag t on a.id = t.article_id \
-    where t.name = ? limit ?, ?",
-        query.tag,
-        query.offset.unwrap_or(0),
-        query.limit.unwrap_or(20)
-    )
-    .fetch_all(pool)
-    .await?;
-    Ok(articles)
+    let mut sql = "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(*) as favorites_count 
+    FROM article a join tag t on a.id = t.article_id
+    left join article_favorite af on a.id = af.article_id ".to_string();
+
+    let mut values = vec![];
+    if query.tag.is_some() {
+        sql.push_str(" where t.name = ? ");
+        values.push(query.tag.unwrap());
+    }
+    if query.favorited.is_some() {
+        if values.len() == 0 {
+            sql.push_str(" where ");
+        }
+        sql.push_str(" a.id in (select article_id from article_favorite af join user on af.user_id = user.id where user.username = ?) ");
+        values.push(query.favorited.unwrap());
+    }
+    sql.push_str("group by a.id order by a.id desc limit ?, ?");
+    values.push(query.offset.unwrap_or(0).to_string());
+    values.push(query.limit.unwrap_or(20).to_string());
+    let mut query_as = sqlx::query_as(sql.as_str());
+    for v in values {
+        query_as = query_as.bind(v);
+    }
+    let result = query_as.fetch_all(pool).await;
+    match result {
+        Ok(articles) => Ok(articles),
+        Err(e) => {
+            log::error!("select article by query error: {}", e);
+            Err(PersistenceError::Unknown)
+        }
+    }
 }
 
 //
@@ -224,14 +242,24 @@ pub async fn select_article_by_id(
     // let mut conn = pool.get_conn()?;
 
     // 使用参数化查询以避免SQL注入风险
-    let article = sqlx::query_as!(ArticleEntity,
-            "SELECT id, title, slug, description, body, created_at, updated_at, tag_list, user_id FROM article WHERE id = ? limit 1",
+    let result = sqlx::query_as!(ArticleEntity,
+        "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(*) as favorites_count
+        FROM article a left join article_favorite af on a.id = af.article_id
+        WHERE a.id = ? group by a.id order by a.id desc limit 1",
         (id)
-        ).fetch_one(pool).await?;
+        )
+        .fetch_one(pool)
+        .await;
     // let tags = sqlx::query_scalar!("SELECT name FROM tag WHERE article_id = ?", (id))
     //     .fetch_all(pool)
     //     .await?;
-    Ok(article)
+    match result {
+        Ok(article) => Ok(article),
+        Err(e) => {
+            log::error!("select article by id error: {}", e);
+            Err(PersistenceError::Unknown)
+        }
+    }
 }
 
 pub async fn select_article_by_slug(
@@ -241,15 +269,24 @@ pub async fn select_article_by_slug(
     // let mut conn = pool.get_conn()?;
 
     // 使用参数化查询以避免SQL注入风险
-    let article = sqlx::query_as!(ArticleEntity,
-            "SELECT id, title, slug, description, body, created_at, updated_at, tag_list, user_id FROM article \
-            WHERE slug = ? order by id desc limit 1",
+    let result = sqlx::query_as!(ArticleEntity,
+        "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(*) as favorites_count
+        FROM article a left join article_favorite af on a.id = af.article_id
+        WHERE a.slug = ? group by a.id order by a.id desc limit 1",
         (slug)
-        ).fetch_one(pool).await?;
+        )
+        .fetch_one(pool)
+        .await;
     // let tags = sqlx::query_scalar!("SELECT name FROM tag WHERE article_id = ?", (id))
     //     .fetch_all(pool)
     //     .await?;
-    Ok(article)
+    match result {
+        Ok(article) => Ok(article),
+        Err(e) => {
+            log::error!("select article by slug error: {}", e);
+            Err(PersistenceError::Unknown)
+        }
+    }
 }
 //
 // pub fn update_article_by_slug(pool: &Pool) {
@@ -288,7 +325,7 @@ pub async fn delete_article_by_slug(
     )
     .execute(pool)
     .await?;
-    if (result.rows_affected() > 0) {
+    if result.rows_affected() > 0 {
         Ok(())
     } else {
         Err(PersistenceError::Unknown)
@@ -299,7 +336,7 @@ pub async fn insert_article_favorite(
     pool: &MySqlPool,
     user_id: i64,
     article_id: i64,
-) -> Result<(i64), PersistenceError> {
+) -> Result<i64, PersistenceError> {
     let result = sqlx::query!(
         "insert article_favorite(user_id, article_id) values (?, ?)",
         user_id,

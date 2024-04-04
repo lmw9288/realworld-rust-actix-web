@@ -1,17 +1,14 @@
 use crate::models::{
-    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleUpdateForm,
-    ArticleWrapper, ArticlesWrapper, CommentResponse, CommentsWrapper, UserEntity, UserResponse,
+    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleWrapper, ArticlesWrapper, UserEntity, UserResponse,
 };
 use crate::persistence::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
     select_article_by_id, select_article_by_slug, select_articles_by_query, select_user_by_id,
 };
-use actix_web::web::delete;
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
 use realworld_rust_actix_web::SessionState;
-use sqlx::{query_builder, MySqlPool, QueryBuilder};
-use std::ops::Deref;
+use sqlx::MySqlPool;
 
 //
 #[get("")]
@@ -74,7 +71,7 @@ pub async fn create_article(
 pub async fn delete_article(
     session_state: SessionState,
     pool: web::Data<MySqlPool>,
-    path: web::Path<(String)>,
+    path: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let user_id = session_state.user_id;
     let slug = path.into_inner();
@@ -86,12 +83,12 @@ pub async fn delete_article(
 
 #[put("/{slug}")]
 pub async fn update_article(
-    session_state: SessionState,
-    pool: web::Data<MySqlPool>,
-    path: web::Path<(String)>,
-    data: web::Json<ArticleWrapper<ArticleUpdateForm>>,
+    // session_state: SessionState,
+    // pool: web::Data<MySqlPool>,
+    path: web::Path<String>,
+    // data: web::Json<ArticleWrapper<ArticleUpdateForm>>,
 ) -> actix_web::Result<impl Responder> {
-    let user_id = session_state.user_id;
+    // let user_id = session_state.user_id;
     let slug = path.into_inner();
     // let update_form = data.article;
     // update_article_by_slug(&pool, user_id, path.0, data.0.article);
@@ -120,8 +117,8 @@ pub async fn update_article(
 //
 #[get("/feed")]
 pub async fn list_articles_feed(
-    session_state: SessionState,
-    pool: web::Data<MySqlPool>,
+    // session_state: SessionState,
+    // pool: web::Data<MySqlPool>,
 ) -> actix_web::Result<impl Responder> {
     Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
         articles: vec![],
@@ -131,7 +128,7 @@ pub async fn list_articles_feed(
 
 //
 #[get("/{slug}")]
-pub async fn single_article(path: web::Path<(String)>) -> actix_web::Result<impl Responder> {
+pub async fn single_article(path: web::Path<String>) -> actix_web::Result<impl Responder> {
     log::info!("single_article: path: {:?}", path);
 
     Ok(web::Json(ArticleWrapper {
@@ -160,7 +157,7 @@ pub async fn single_article(path: web::Path<(String)>) -> actix_web::Result<impl
 pub async fn favorite_article(
     session_state: SessionState,
     pool: web::Data<MySqlPool>,
-    path: web::Path<(String)>,
+    path: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let slug = path.into_inner();
     let user_id = session_state.user_id;
@@ -178,7 +175,7 @@ pub async fn favorite_article(
 pub async fn unfavorite_article(
     session_state: SessionState,
     pool: web::Data<MySqlPool>,
-    path: web::Path<(String)>,
+    path: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     let slug = path.into_inner();
     let user_id = session_state.user_id;
@@ -193,6 +190,8 @@ pub async fn unfavorite_article(
 }
 
 fn to_article_response(article: ArticleEntity, user: UserEntity) -> ArticleResponse {
+    let mut tag_list = serde_json::from_str(&article.tag_list).unwrap_or(Vec::<String>::new());
+    tag_list.sort();
     ArticleResponse {
         title: article.title,
         slug: article.slug,
@@ -206,9 +205,9 @@ fn to_article_response(article: ArticleEntity, user: UserEntity) -> ArticleRespo
             .updated_at
             .format("%Y-%m-%dT%H:%M:%S%.3fZ")
             .to_string(),
-        favorites_count: 0,
+        favorites_count: article.favorites_count,
         favorited: false,
-        tag_list: serde_json::from_str(&article.tag_list).unwrap_or(vec![]),
+        tag_list,
         author: to_author(user),
     }
 }

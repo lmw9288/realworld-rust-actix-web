@@ -1,40 +1,17 @@
-use std::{
-    borrow::Cow,
-    env, fmt,
-    sync::{Arc, Mutex, RwLock},
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::
+    env
+;
 
-use actix_web::web::service;
 use actix_web::{
-    dev::Service,
-    dev::{Payload, ServiceRequest},
-    error::ErrorUnauthorized,
-    http::header,
-    http::header::{Header, HeaderValue, InvalidHeaderValue, TryIntoHeaderValue},
     middleware::Logger,
     web,
-    web::{BufMut, BytesMut},
-    App, Error, FromRequest, HttpMessage, HttpRequest, HttpResponse, HttpServer, Result,
-};
-use actix_web_httpauth::{
-    extractors::bearer::{BearerAuth, Config},
-    extractors::{bearer, AuthExtractorConfig, AuthenticationError},
-    headers::authorization,
-    headers::authorization::{ParseError, Scheme},
-    middleware::HttpAuthentication,
+    App, HttpServer,
 };
 use dotenvy::dotenv;
 use env_logger::Env;
-use futures::{
-    future::{err, ok, LocalBoxFuture, Ready},
-    FutureExt,
-};
-use jsonwebtoken::{DecodingKey, Validation};
 use sqlx::mysql::MySqlPoolOptions;
-use sqlx::{MySql, MySqlPool, Pool};
+use sqlx::MySqlPool;
 
-use crate::models::Claims;
 
 mod models;
 mod persistence;
@@ -59,7 +36,7 @@ async fn main() -> std::io::Result<()> {
 
     log::info!("initializing database connection");
 
-    let i = Box::new(5);
+    // let i = Box::new(5);
 
     let pool = get_conn_builder().await;
 
