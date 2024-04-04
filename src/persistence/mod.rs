@@ -6,7 +6,10 @@ use derive_more::{Display, Error, From};
 use slugify::slugify;
 use sqlx::{Execute, MySqlPool, QueryBuilder};
 
-use crate::models::{ArticleCreateForm, ArticleEntity, ArticleQuery, UserEntity, UserUpdateForm};
+use crate::models::{
+    ArticleCreateForm, ArticleEntity, ArticleFavoriteEntity, ArticleQuery, UserEntity,
+    UserUpdateForm,
+};
 use crate::routes::articles;
 use crate::utils::encrypt_password;
 
@@ -202,12 +205,14 @@ pub async fn select_articles_by_query(
     query: ArticleQuery,
 ) -> Result<Vec<ArticleEntity>, PersistenceError> {
     let mut sql = "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(*) as favorites_count 
-    FROM article a join tag t on a.id = t.article_id
-    left join article_favorite af on a.id = af.article_id ".to_string();
+    FROM article a left join article_favorite af on a.id = af.article_id ".to_string();
 
     let mut values = vec![];
     if query.tag.is_some() {
-        sql.push_str(" where t.name = ? ");
+        if values.len() == 0 {
+            sql.push_str(" where ");
+        }
+        sql.push_str(" a.id in (select article_id from tag where name = ?) ");
         values.push(query.tag.unwrap());
     }
     if query.favorited.is_some() {
@@ -349,6 +354,31 @@ pub async fn insert_article_favorite(
         Ok(result.last_insert_id() as i64)
     } else {
         Err(PersistenceError::Unknown)
+    }
+}
+
+pub async fn select_article_favorite_by_user_id_and_article_id(
+    pool: &MySqlPool,
+    user_id: i64,
+    article_id: i64,
+) -> Result<Option<ArticleFavoriteEntity>, PersistenceError> {
+    let result = sqlx::query_as!(
+        ArticleFavoriteEntity,
+        "select user_id, article_id from article_favorite where user_id = ? and article_id = ?",
+        user_id,
+        article_id
+    )
+    .fetch_optional(pool)
+    .await;
+    match result {
+        Ok(favorite) => Ok(favorite),
+        Err(e) => {
+            log::error!(
+                "select article favorite by user id and article id error: {}",
+                e
+            );
+            Err(PersistenceError::Unknown)
+        }
     }
 }
 

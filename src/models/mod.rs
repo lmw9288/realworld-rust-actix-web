@@ -130,7 +130,8 @@ pub struct ArticleEntity {
     pub tag_list: String,
     pub user_id: i64,
 
-    pub favorites_count: i64
+    pub favorites_count: i64,
+    // pub favorited: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -189,4 +190,9 @@ pub struct TagEntity {
     pub name: String,
     pub article_id: i64,
     pub user_id: i64,
+}
+#[derive(Debug, Deserialize, Serialize, FromRow)]
+pub struct ArticleFavoriteEntity {
+    pub user_id: i64,
+    pub article_id: i64,
 }

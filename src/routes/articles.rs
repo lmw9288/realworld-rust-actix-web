@@ -1,9 +1,11 @@
 use crate::models::{
-    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleWrapper, ArticlesWrapper, UserEntity, UserResponse,
+    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleWrapper,
+    ArticlesWrapper, UserEntity, UserResponse,
 };
 use crate::persistence::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
-    select_article_by_id, select_article_by_slug, select_articles_by_query, select_user_by_id,
+    select_article_by_id, select_article_by_slug,
+    select_article_favorite_by_user_id_and_article_id, select_articles_by_query, select_user_by_id,
 };
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
@@ -23,19 +25,20 @@ pub async fn list_articles(
     let articles = select_articles_by_query(&pool, query).await?;
     // let user = select_user_by_id(&pool, user_id).await?;
 
+    log::info!("articles = {:?}", articles);
+
+    let mut result_articles = vec![];
+    for a in articles {
+        log::info!("article = {:?}", a);
+        let user = select_user_by_id(&pool, a.user_id).await?;
+        let article_favorite =
+            select_article_favorite_by_user_id_and_article_id(&pool, a.user_id, a.id).await?;
+        let favorited = if article_favorite.is_some() { true } else { false };
+        result_articles.push(to_article_response(a, user, favorited))
+    }
+
     Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
-        articles: articles
-            .into_iter()
-            .map(|a| {
-                // let user = select_user_by_id(&pool, a.user_id).await?;
-                to_article_response(a, UserEntity {
-                    id: 0,
-                    username: "".to_string(),
-                    email: "".to_string(),
-                    password: "".to_string(),
-                })
-            })
-            .collect(),
+        articles: result_articles,
         articles_count: 0,
     }))
 }
@@ -60,7 +63,7 @@ pub async fn create_article(
     // log::info!("t = {}", t);
 
     let r = ArticleWrapper {
-        article: to_article_response(article, user),
+        article: to_article_response(article, user, false),
     };
     log::info!("create_article: r = {:?}", r);
 
@@ -116,8 +119,7 @@ pub async fn update_article(
 
 //
 #[get("/feed")]
-pub async fn list_articles_feed(
-    // session_state: SessionState,
+pub async fn list_articles_feed(// session_state: SessionState,
     // pool: web::Data<MySqlPool>,
 ) -> actix_web::Result<impl Responder> {
     Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
@@ -167,7 +169,7 @@ pub async fn favorite_article(
     insert_article_favorite(&pool, user_id, article.id).await?;
     // log::info!()
     Ok(web::Json(ArticleWrapper {
-        article: to_article_response(article, user),
+        article: to_article_response(article, user, true),
     }))
 }
 
@@ -185,11 +187,11 @@ pub async fn unfavorite_article(
     delete_article_favorite(&pool, user_id, article.id).await?;
 
     Ok(web::Json(ArticleWrapper {
-        article: to_article_response(article, user),
+        article: to_article_response(article, user, false),
     }))
 }
 
-fn to_article_response(article: ArticleEntity, user: UserEntity) -> ArticleResponse {
+fn to_article_response(article: ArticleEntity, user: UserEntity, favorited: bool) -> ArticleResponse {
     let mut tag_list = serde_json::from_str(&article.tag_list).unwrap_or(Vec::<String>::new());
     tag_list.sort();
     ArticleResponse {
@@ -206,7 +208,7 @@ fn to_article_response(article: ArticleEntity, user: UserEntity) -> ArticleRespo
             .format("%Y-%m-%dT%H:%M:%S%.3fZ")
             .to_string(),
         favorites_count: article.favorites_count,
-        favorited: false,
+        favorited,
         tag_list,
         author: to_author(user),
     }
