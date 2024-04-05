@@ -63,6 +63,14 @@ pub async fn select_articles_by_query(
         sql.push_str(" a.id in (select article_id from article_favorite af join user on af.user_id = user.id where user.username = ?) ");
         values.push(query.favorited.unwrap());
     }
+
+    if query.feed_user_id.is_some() {
+        if values.len() == 0 {
+            sql.push_str(" where ");
+        }
+        sql.push_str(" a.user_id in (select uf.followee_user_id from user_follow uf join user on uf.follower_user_id = user.id where user.id = ?) ");
+        values.push(query.feed_user_id.unwrap().to_string());
+    }
     sql.push_str("group by a.id order by a.id desc limit ?, ?");
     values.push(query.offset.unwrap_or(0).to_string());
     values.push(query.limit.unwrap_or(20).to_string());

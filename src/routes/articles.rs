@@ -47,6 +47,32 @@ pub async fn list_articles(
     }))
 }
 
+#[get("/feed")]
+pub async fn list_articles_feed(
+    session_state: SessionState,
+    pool: web::Data<MySqlPool>,
+    query: web::Query<ArticleQuery>,
+) -> actix_web::Result<impl Responder> {
+    let user_id = session_state.user_id;
+    let mut query = query.into_inner();
+
+    query.feed_user_id = Some(user_id);
+    let articles = select_articles_by_query(&pool, query).await?;
+    let mut result_articles = vec![];
+    for a in articles {
+        // log::info!("article = {:?}", a);
+        let user = select_user_by_id(&pool, a.user_id).await?;
+        let favorited =
+            select_article_favorite_by_user_id_and_article_id(&pool, user_id, a.id).await?;
+
+        result_articles.push(to_article_response(a, user, favorited))
+    }
+    Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
+        articles: result_articles,
+        articles_count: 0,
+    }))
+}
+
 //
 #[post("")]
 pub async fn create_article(
@@ -117,15 +143,6 @@ pub async fn update_article(
 }
 
 //
-#[get("/feed")]
-pub async fn list_articles_feed(// session_state: SessionState,
-    // pool: web::Data<MySqlPool>,
-) -> actix_web::Result<impl Responder> {
-    Ok(web::Json(ArticlesWrapper::<ArticleResponse> {
-        articles: vec![],
-        articles_count: 0,
-    }))
-}
 
 //
 #[get("/{slug}")]

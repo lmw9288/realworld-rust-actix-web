@@ -87,6 +87,8 @@ pub struct ArticleUpdateForm {
     pub title: Option<String>,
     pub description: Option<String>,
     pub body: Option<String>,
+    #[serde(rename = "tagList")]
+    pub tag_list: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -97,6 +99,8 @@ pub struct ArticleQuery {
 
     pub limit: Option<i32>,
     pub offset: Option<i32>,
+
+    pub feed_user_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

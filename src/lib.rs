@@ -1,11 +1,14 @@
-use actix_web::{Error, FromRequest, HttpRequest};
+use crate::models::Claims;
 use actix_web::dev::Payload;
 use actix_web::error::ErrorUnauthorized;
+use actix_web::{Error, FromRequest, HttpRequest};
 use futures::future::{err, ok, Ready};
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use crate::models::Claims;
+use persistence::ErrorResponse;
 
 mod models;
+mod persistence;
+mod utils;
 
 #[derive(Debug, Clone)]
 pub struct SessionState {
@@ -39,9 +42,17 @@ impl FromRequest for SessionState {
                 ) {
                     Ok(token_data) => {
                         let user_id = token_data.claims.sub;
-                        ok(SessionState { user_id, token: token.to_string() })
+                        ok(SessionState {
+                            user_id,
+                            token: token.to_string(),
+                        })
                     }
-                    Err(_e) => err(ErrorUnauthorized("invalid token!")),
+                    Err(_e) => {
+                        let error_response = ErrorResponse::new("invalid token!".to_string());
+                        err(ErrorUnauthorized(
+                            serde_json::to_string(&error_response).unwrap(),
+                        ))
+                    }
                 }
             }
             None => err(ErrorUnauthorized("blocked!")),
