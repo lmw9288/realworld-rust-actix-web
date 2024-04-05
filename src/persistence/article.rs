@@ -1,7 +1,9 @@
 use chrono::Utc;
 use sqlx::MySqlPool;
 
-use crate::models::{ArticleCreateForm, ArticleEntity, ArticleFavoriteEntity, ArticleQuery};
+use crate::models::{
+    ArticleCreateForm, ArticleEntity, ArticleFavoriteEntity, ArticleQuery, ArticleUpdateForm,
+};
 
 use slugify::slugify;
 
@@ -135,6 +137,58 @@ pub async fn select_article_by_slug(
             log::error!("select article by slug error: {}", e);
             Err(PersistenceError::Unknown)
         }
+    }
+}
+
+pub async fn update_article_by_slug(
+    pool: &MySqlPool,
+    user_id: i64,
+    slug: String,
+    update_form: ArticleUpdateForm,
+) -> Result<(), PersistenceError> {
+    let mut sql = "update article ".to_string();
+
+    let mut values = vec![];
+    if update_form.title.is_some() {
+        if values.len() == 0 {
+            sql.push_str(" set ");
+        }
+        sql.push_str("title = ?, slug = ?");
+        let title = update_form.title.unwrap();
+        let title2 = title.clone();
+        values.push(title);
+        values.push(slugify::slugify!(&title2));
+    }
+    if update_form.body.is_some() {
+        if values.len() == 0 {
+            sql.push_str(" set ");
+        }
+        sql.push_str("body = ?,");
+        values.push(update_form.body.unwrap());
+    }
+    if update_form.description.is_some() {
+        if values.len() == 0 {
+            sql.push_str(" set ");
+        }
+        sql.push_str("description = ?,");
+        values.push(update_form.description.unwrap());
+    }
+    sql = sql[..sql.len() - 1].to_string();
+
+    sql.push_str(" where slug = ? and user_id = ?");
+    values.push(slug);
+    values.push(user_id.to_string());
+    log::info!("update article sql: {}", sql);
+
+    let mut query_as = sqlx::query(sql.as_str());
+    for v in values {
+        query_as = query_as.bind(v);
+    }
+    let result = query_as.execute(pool).await?;
+    if result.rows_affected() > 0 {
+        Ok(())
+    } else {
+        Err(PersistenceError::Unknown)
     }
 }
 

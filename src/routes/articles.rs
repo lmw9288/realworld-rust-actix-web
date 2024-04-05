@@ -1,15 +1,16 @@
 use crate::models::{
-    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleWrapper,
-    ArticlesWrapper, UserEntity, UserResponse,
+    ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleUpdateForm,
+    ArticleWrapper, ArticlesWrapper, UserEntity, UserResponse,
 };
 use crate::persistence::article::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
     select_article_by_id, select_article_by_slug,
     select_article_favorite_by_user_id_and_article_id, select_articles_by_query,
+    update_article_by_slug,
 };
 use crate::persistence::user::select_user_by_id;
 use actix_web::{delete, get, post, put, web, Responder};
-use chrono::Utc;
+
 use realworld_rust_actix_web::SessionState;
 use sqlx::MySqlPool;
 
@@ -91,34 +92,25 @@ pub async fn delete_article(
 
 #[put("/{slug}")]
 pub async fn update_article(
-    // session_state: SessionState,
-    // pool: web::Data<MySqlPool>,
+    session_state: SessionState,
+    pool: web::Data<MySqlPool>,
     path: web::Path<String>,
-    // data: web::Json<ArticleWrapper<ArticleUpdateForm>>,
+    data: web::Json<ArticleWrapper<ArticleUpdateForm>>,
 ) -> actix_web::Result<impl Responder> {
-    // let user_id = session_state.user_id;
+    let user_id = session_state.user_id;
     let slug = path.into_inner();
-    // let update_form = data.article;
-    // update_article_by_slug(&pool, user_id, path.0, data.0.article);
+    let slug2 = slug.clone();
+    let update_form = data.into_inner().article;
+    update_article_by_slug(&pool, user_id, slug, update_form).await?;
+    let article = select_article_by_slug(&pool, slug2).await?;
+
+    let af = select_article_favorite_by_user_id_and_article_id(&pool, user_id, article.id).await?;
+    let favorited = if af.is_some() { true } else { false };
+
+    let user = select_user_by_id(&pool, user_id).await?;
+
     Ok(web::Json(ArticleWrapper {
-        article: ArticleResponse {
-            title: "".to_string(),
-            slug,
-            body: "".to_string(),
-            description: "".to_string(),
-            created_at: Utc::now().to_rfc3339(),
-            updated_at: Utc::now().to_rfc3339(),
-            favorites_count: 0,
-            favorited: false,
-            tag_list: vec![],
-            author: UserResponse {
-                username: "".to_string(),
-                email: "".to_string(),
-                token: None,
-                bio: None,
-                image: None,
-            },
-        },
+        article: to_article_response(article, user, favorited),
     }))
 }
 

@@ -37,11 +37,7 @@ impl actix_web::ResponseError for PersistenceError {
     }
 }
 
-//
-//
-// pub fn update_article_by_slug(pool: &Pool) {
-//
-// }
+
 
 pub async fn insert_follow_by_user(
     pool: &MySqlPool,
