@@ -7,7 +7,7 @@ use crate::models::{
 
 use slugify::slugify;
 
-use super::PersistenceError;
+use super::{tag::insert_tag, PersistenceError};
 
 pub async fn insert_article(
     pool: &MySqlPool,
@@ -26,17 +26,12 @@ pub async fn insert_article(
         Utc::now().naive_utc(),
         serde_json::to_string(&create_form.tag_list).unwrap_or("[]".to_string()),
         user_id
-    ).execute(pool).await?;
+    )
+    .execute(pool)
+    .await?;
 
     for tag in create_form.tag_list {
-        sqlx::query!(
-            "insert into tag(name, article_id, user_id) values (?, ?, ?)",
-            tag,
-            result.last_insert_id(),
-            user_id
-        )
-        .execute(pool)
-        .await?;
+        insert_tag(&pool, tag, result.last_insert_id() as i64, user_id).await?;
     }
 
     if result.last_insert_id() > 0 {

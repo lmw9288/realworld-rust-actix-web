@@ -1,17 +1,10 @@
-use std::
-    env
-;
+use std::env;
 
-use actix_web::{
-    middleware::Logger,
-    web,
-    App, HttpServer,
-};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenvy::dotenv;
 use env_logger::Env;
 use sqlx::mysql::MySqlPoolOptions;
 use sqlx::MySqlPool;
-
 
 mod models;
 mod persistence;
@@ -19,10 +12,14 @@ mod routes;
 mod utils;
 
 async fn get_conn_builder() -> MySqlPool {
+    // let num_cores = num_cpus::get();
+
     let database_url = env::var("DATABASE_URL").expect("database url is empty!!!");
     // We create a single connection pool for SQLx that's shared across the whole application.
     // This saves us from opening a new connection for every API call, which is wasteful.
     MySqlPoolOptions::new()
+        // .min_connections(num_cores as u32 / 2)
+        // .max_connections(num_cores as u32)
         .connect(&database_url)
         .await
         .expect("could not connect to database_url")

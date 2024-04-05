@@ -8,6 +8,7 @@ use crate::persistence::article::{
     select_article_favorite_by_user_id_and_article_id, select_articles_by_query,
     update_article_by_slug,
 };
+use crate::persistence::tag::delete_tag_by_article_id;
 use crate::persistence::user::select_user_by_id;
 use actix_web::{delete, get, post, put, web, Responder};
 

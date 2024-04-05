@@ -5,6 +5,7 @@ use sqlx::MySqlPool;
 
 pub mod article;
 pub mod user;
+pub mod tag;
 
 #[derive(Debug, Display, Error, From)]
 pub enum PersistenceError {
