@@ -2,12 +2,12 @@ use crate::models::{
     ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleWrapper,
     ArticlesWrapper, UserEntity, UserResponse,
 };
-use crate::persistence::user::select_user_by_id;
-use crate::persistence::{
+use crate::persistence::article::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
     select_article_by_id, select_article_by_slug,
     select_article_favorite_by_user_id_and_article_id, select_articles_by_query,
 };
+use crate::persistence::user::select_user_by_id;
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
 use realworld_rust_actix_web::SessionState;
@@ -34,7 +34,11 @@ pub async fn list_articles(
         let user = select_user_by_id(&pool, a.user_id).await?;
         let article_favorite =
             select_article_favorite_by_user_id_and_article_id(&pool, a.user_id, a.id).await?;
-        let favorited = if article_favorite.is_some() { true } else { false };
+        let favorited = if article_favorite.is_some() {
+            true
+        } else {
+            false
+        };
         result_articles.push(to_article_response(a, user, favorited))
     }
 
@@ -192,7 +196,11 @@ pub async fn unfavorite_article(
     }))
 }
 
-fn to_article_response(article: ArticleEntity, user: UserEntity, favorited: bool) -> ArticleResponse {
+fn to_article_response(
+    article: ArticleEntity,
+    user: UserEntity,
+    favorited: bool,
+) -> ArticleResponse {
     let mut tag_list = serde_json::from_str(&article.tag_list).unwrap_or(Vec::<String>::new());
     tag_list.sort();
     ArticleResponse {
