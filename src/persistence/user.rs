@@ -2,7 +2,7 @@ use chrono::Utc;
 use sqlx::{Execute, MySqlPool, QueryBuilder};
 
 use crate::{
-    models::{UserEntity, UserUpdateForm},
+    models::{UserEntity, UserFollowEntity, UserUpdateForm},
     utils::encrypt_password,
 };
 
@@ -37,7 +37,7 @@ pub async fn insert_user(
 pub async fn select_user_by_id(pool: &MySqlPool, id: i64) -> Result<UserEntity, PersistenceError> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, username, email, password FROM user WHERE id = ? limit 1",
+        "SELECT id, username, email, password, image FROM user WHERE id = ? limit 1",
         (id)
     )
     .fetch_one(pool)
@@ -52,7 +52,7 @@ pub async fn select_user_by_email(
 ) -> Result<UserEntity, PersistenceError> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, username, email, password FROM user WHERE email = ? limit 1",
+        "SELECT id, username, email, password, image FROM user WHERE email = ? limit 1",
         (email)
     )
     .fetch_one(pool)
@@ -66,7 +66,7 @@ pub async fn select_user_by_username(
 ) -> Result<UserEntity, PersistenceError> {
     let user = sqlx::query_as!(
         UserEntity,
-        "SELECT id, username, email, password FROM user WHERE username = ? order by id desc limit 1",
+        "SELECT id, username, email, password, image FROM user WHERE username = ? order by id desc limit 1",
         (username)
     )
         .fetch_one(pool)
@@ -127,6 +127,24 @@ pub async fn update_user_by_id(
     }
 }
 
+pub async fn select_follow_by_user(
+    pool: &MySqlPool,
+    follower_user_id: i64,
+    followee_user_id: i64,
+) -> Result<bool, PersistenceError> {
+    let result = sqlx::query_as!(
+        UserFollowEntity,
+        "select followee_user_id, follower_user_id from user_follow where follower_user_id = ? and followee_user_id = ?",
+        follower_user_id,
+        followee_user_id)
+        .fetch_optional(pool)
+        .await?;
+    if result.is_some() {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
 
 pub async fn insert_follow_by_user(
     pool: &MySqlPool,

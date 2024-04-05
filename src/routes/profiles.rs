@@ -4,27 +4,28 @@ use sqlx::MySqlPool;
 use realworld_rust_actix_web::SessionState;
 
 use crate::models::{ProfileResponse, ProfileWrapper};
-use crate::persistence::user::select_user_by_username;
 use crate::persistence::user::{delete_follow_by_user, insert_follow_by_user};
+use crate::persistence::user::{select_follow_by_user, select_user_by_username};
 
 #[get("/{username}")]
 pub async fn get_profile(
-    // session_state: SessionState,
+    session_state: SessionState,
     path: web::Path<String>,
     pool: web::Data<MySqlPool>,
 ) -> actix_web::Result<impl Responder> {
-    // let user_id = session_state.user_id;
+    let user_id = session_state.user_id;
 
     let username = path.into_inner();
 
-    let user = select_user_by_username(&pool, username).await?;
+    let target_user = select_user_by_username(&pool, username).await?;
+    let following = select_follow_by_user(&pool, user_id, target_user.id).await?;
 
     Ok(web::Json(ProfileWrapper {
         profile: ProfileResponse {
-            username: user.username,
+            username: target_user.username,
             bio: None,
             image: None,
-            following: false,
+            following,
         },
     }))
 }

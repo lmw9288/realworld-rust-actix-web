@@ -21,6 +21,7 @@ pub struct UserEntity {
     pub username: String,
     pub email: String,
     pub password: String,
+    pub image: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -195,4 +196,10 @@ pub struct TagEntity {
 pub struct ArticleFavoriteEntity {
     pub user_id: i64,
     pub article_id: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize, FromRow)]
+pub struct UserFollowEntity {
+    pub follower_user_id: i64,
+    pub followee_user_id: i64,
 }

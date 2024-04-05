@@ -45,7 +45,7 @@ pub async fn select_articles_by_query(
     pool: &MySqlPool,
     query: ArticleQuery,
 ) -> Result<Vec<ArticleEntity>, PersistenceError> {
-    let mut sql = "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(*) as favorites_count 
+    let mut sql = "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(af.id) as favorites_count 
     FROM article a left join article_favorite af on a.id = af.article_id ".to_string();
 
     let mut values = vec![];
@@ -142,7 +142,7 @@ pub async fn update_article_by_slug(
         if values.len() == 0 {
             sql.push_str(" set ");
         }
-        sql.push_str("title = ?, slug = ?");
+        sql.push_str("title = ?, slug = ?, ");
         let title = update_form.title.unwrap();
         let title2 = title.clone();
         values.push(title);
@@ -226,7 +226,7 @@ pub async fn select_article_favorite_by_user_id_and_article_id(
     pool: &MySqlPool,
     user_id: i64,
     article_id: i64,
-) -> Result<Option<ArticleFavoriteEntity>, PersistenceError> {
+) -> Result<bool, PersistenceError> {
     let result = sqlx::query_as!(
         ArticleFavoriteEntity,
         "select user_id, article_id from article_favorite where user_id = ? and article_id = ?",
@@ -234,16 +234,11 @@ pub async fn select_article_favorite_by_user_id_and_article_id(
         article_id
     )
     .fetch_optional(pool)
-    .await;
-    match result {
-        Ok(favorite) => Ok(favorite),
-        Err(e) => {
-            log::error!(
-                "select article favorite by user id and article id error: {}",
-                e
-            );
-            Err(PersistenceError::Unknown)
-        }
+    .await?;
+    if result.is_some() {
+        Ok(true)
+    } else {
+        Ok(false)
     }
 }
 

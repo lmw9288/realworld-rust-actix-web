@@ -1,5 +1,13 @@
-use actix_web::http::StatusCode;
+use std::fmt;
+
+use actix_web::{
+    body::BoxBody,
+    http::{header, StatusCode},
+    web::BytesMut,
+    HttpResponse,
+};
 use derive_more::{Display, Error, From};
+use serde::{Deserialize, Serialize};
 
 pub mod article;
 pub mod tag;
@@ -18,8 +26,38 @@ pub enum PersistenceError {
     Unknown,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub errors: ErrorsBody,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ErrorsBody {
+    body: Vec<String>,
+}
+
+impl ErrorResponse {
+    // pub fn new(errors: Vec<String>) -> Self {
+    //     ErrorResponse {
+    //         errors: ErrorsBody { body: errors },
+    //     }
+    // }
+
+    pub fn new(msg: String) -> Self {
+        ErrorResponse {
+            errors: ErrorsBody { body: vec![msg] },
+        }
+    }
+}
+
+impl fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.errors)
+    }
+}
+
 impl actix_web::ResponseError for PersistenceError {
-    fn status_code(&self) -> StatusCode {
+    fn error_response(&self) -> HttpResponse<BoxBody> {
         match self {
             // PersistenceError::EmptyBankName
             // | PersistenceError::EmptyCountry
@@ -29,11 +67,18 @@ impl actix_web::ResponseError for PersistenceError {
             // | PersistenceError::EmptyCustomerName => StatusCode::BAD_REQUEST,
             PersistenceError::MysqlError(e) => {
                 log::error!("PersistenceError {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
+
+                HttpResponse::with_body(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    serde_json::to_string(&ErrorResponse::new(e.to_string())).unwrap(),
+                )
+                .map_into_boxed_body()
             }
-            PersistenceError::Unknown => StatusCode::INTERNAL_SERVER_ERROR,
+            PersistenceError::Unknown => HttpResponse::with_body(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::to_string(&ErrorResponse::new("unknown error".to_string())).unwrap(),
+            )
+            .map_into_boxed_body(),
         }
     }
 }
-
-

@@ -1,12 +1,16 @@
+use crate::models::{
+    Claims, UserEntity, UserLogin, UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper,
+};
+use crate::persistence::user::{
+    insert_user, select_user_by_email, select_user_by_id, update_user_by_id,
+};
+use crate::utils::verify_password;
+use actix_web::{error, get, post, put, web, Responder};
+use jsonwebtoken::{EncodingKey, Header};
+use realworld_rust_actix_web::SessionState;
+use sqlx::MySqlPool;
 use std::ops::Add;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use actix_web::{error, get, post, put, Responder, web};
-use jsonwebtoken::{EncodingKey, Header};
-use sqlx::MySqlPool;
-use realworld_rust_actix_web::SessionState;
-use crate::models::{Claims, UserLogin, UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper};
-use crate::persistence::user::{insert_user, select_user_by_email, select_user_by_id, update_user_by_id};
-use crate::utils::verify_password;
 
 #[post("")]
 pub async fn registry_user(
@@ -38,7 +42,7 @@ pub async fn registry_user(
         &my_claims,
         &EncodingKey::from_secret("realworld".as_ref()),
     )
-        .unwrap();
+    .unwrap();
 
     Ok(web::Json(UserWrapper {
         user: UserResponse {
@@ -81,7 +85,7 @@ pub async fn login_user(
         &my_claims,
         &EncodingKey::from_secret("realworld".as_ref()),
     )
-        .unwrap();
+    .unwrap();
     if verify_password(password, &user.password) {
         Ok(web::Json(UserWrapper {
             user: UserResponse {
@@ -108,13 +112,7 @@ pub async fn current_user(
 
     let user = select_user_by_id(&pool, user_id).await?;
     Ok(web::Json(UserWrapper {
-        user: UserResponse {
-            username: user.username,
-            email: user.email,
-            token: Some(token),
-            bio: None,
-            image: None,
-        },
+        user: to_user_response(user, Some(token)),
     }))
 }
 //
@@ -138,4 +136,14 @@ pub async fn update_user(
             image: None,
         },
     }))
+}
+
+fn to_user_response(user: UserEntity, token: Option<String>) -> UserResponse {
+    UserResponse {
+        username: user.username,
+        email: user.email,
+        token: token,
+        bio: None,
+        image: user.image,
+    }
 }

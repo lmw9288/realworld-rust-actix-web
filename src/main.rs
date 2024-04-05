@@ -1,5 +1,8 @@
 use std::env;
 
+use actix_cors::Cors;
+use actix_web::dev::Transform;
+use actix_web::http::{self, header};
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenvy::dotenv;
 use env_logger::Env;
@@ -42,6 +45,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(pool_data.clone())
             .wrap(Logger::default())
+            .wrap(Cors::permissive())
             .service(
                 // 不需要登录的服务
                 web::scope("/api/users")

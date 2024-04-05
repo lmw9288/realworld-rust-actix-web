@@ -1,6 +1,15 @@
 use sqlx::MySqlPool;
 
+use crate::models::TagEntity;
+
 use super::PersistenceError;
+
+pub async fn select_all_tag(pool: &MySqlPool) -> Result<Vec<String>, PersistenceError> {
+    let tags = sqlx::query_scalar!("select name from tag group by name")
+        .fetch_all(pool)
+        .await?;
+    Ok(tags)
+}
 
 pub async fn insert_tag(
     pool: &MySqlPool,
@@ -15,7 +24,7 @@ pub async fn insert_tag(
         name,
         article_id,
         user_id
-        
+
     )
     .execute(pool)
     .await?;
