@@ -126,3 +126,46 @@ pub async fn update_user_by_id(
         Err(PersistenceError::Unknown)
     }
 }
+
+
+pub async fn insert_follow_by_user(
+    pool: &MySqlPool,
+    user_id: i64,
+    followee_user_id: i64,
+) -> Result<i64, PersistenceError> {
+    let result = sqlx::query!(
+        "insert user_follow(created_at, updated_at, follower_user_id, followee_user_id) values (?, ?, ?, ?)",
+        chrono::Utc::now().naive_utc(),
+        chrono::Utc::now().naive_utc(),
+        user_id,
+        followee_user_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.last_insert_id() > 0 {
+        Ok(result.last_insert_id() as i64)
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}
+
+pub async fn delete_follow_by_user(
+    pool: &MySqlPool,
+    user_id: i64,
+    followee_user_id: i64,
+) -> Result<(), PersistenceError> {
+    let result = sqlx::query!(
+        "delete from user_follow where follower_user_id = ? and followee_user_id = ?",
+        user_id,
+        followee_user_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() > 0 {
+        Ok(())
+    } else {
+        Err(PersistenceError::Unknown)
+    }
+}

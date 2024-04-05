@@ -9,10 +9,13 @@ pub async fn insert_tag(
     user_id: i64,
 ) -> Result<i64, PersistenceError> {
     let result = sqlx::query!(
-        "INSERT INTO tag (name, article_id, user_id) VALUES (?, ?, ?)",
+        "INSERT INTO tag (created_at, updated_at, name, article_id, user_id) VALUES (?, ?, ?, ?, ?)",
+        chrono::Utc::now().naive_utc(),
+        chrono::Utc::now().naive_utc(),
         name,
         article_id,
         user_id
+        
     )
     .execute(pool)
     .await?;

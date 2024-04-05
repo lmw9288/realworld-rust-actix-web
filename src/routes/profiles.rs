@@ -1,11 +1,11 @@
-use actix_web::{delete, post, web, Responder, get};
+use actix_web::{delete, get, post, web, Responder};
 use sqlx::MySqlPool;
 
 use realworld_rust_actix_web::SessionState;
 
 use crate::models::{ProfileResponse, ProfileWrapper};
 use crate::persistence::user::select_user_by_username;
-use crate::persistence::{delete_follow_by_user, insert_follow_by_user};
+use crate::persistence::user::{delete_follow_by_user, insert_follow_by_user};
 
 #[get("/{username}")]
 pub async fn get_profile(

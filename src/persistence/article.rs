@@ -70,14 +70,8 @@ pub async fn select_articles_by_query(
     for v in values {
         query_as = query_as.bind(v);
     }
-    let result = query_as.fetch_all(pool).await;
-    match result {
-        Ok(articles) => Ok(articles),
-        Err(e) => {
-            log::error!("select article by query error: {}", e);
-            Err(PersistenceError::Unknown)
-        }
-    }
+    let articles: Vec<ArticleEntity> = query_as.fetch_all(pool).await?;
+    Ok(articles)
 }
 
 //
@@ -212,7 +206,9 @@ pub async fn insert_article_favorite(
     article_id: i64,
 ) -> Result<i64, PersistenceError> {
     let result = sqlx::query!(
-        "insert article_favorite(user_id, article_id) values (?, ?)",
+        "insert article_favorite(created_at, updated_at, user_id, article_id) values (?, ?, ?, ?)",
+        chrono::Utc::now().naive_utc(),
+        chrono::Utc::now().naive_utc(),
         user_id,
         article_id
     )

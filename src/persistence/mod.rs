@@ -1,11 +1,9 @@
 use actix_web::http::StatusCode;
 use derive_more::{Display, Error, From};
-use sqlx::MySqlPool;
-
 
 pub mod article;
-pub mod user;
 pub mod tag;
+pub mod user;
 
 #[derive(Debug, Display, Error, From)]
 pub enum PersistenceError {
@@ -39,44 +37,3 @@ impl actix_web::ResponseError for PersistenceError {
 }
 
 
-
-pub async fn insert_follow_by_user(
-    pool: &MySqlPool,
-    user_id: i64,
-    followee_user_id: i64,
-) -> Result<i64, PersistenceError> {
-    let result = sqlx::query!(
-        "insert user_follow(follower_user_id, followee_user_id) values (?, ?)",
-        user_id,
-        followee_user_id
-    )
-    .execute(pool)
-    .await?;
-
-    if result.last_insert_id() > 0 {
-        Ok(result.last_insert_id() as i64)
-    } else {
-        Err(PersistenceError::Unknown)
-    }
-}
-
-
-pub async fn delete_follow_by_user(
-    pool: &MySqlPool,
-    user_id: i64,
-    followee_user_id: i64,
-) -> Result<(), PersistenceError> {
-    let result = sqlx::query!(
-        "delete from user_follow where follower_user_id = ? and followee_user_id = ?",
-        user_id,
-        followee_user_id
-    )
-    .execute(pool)
-    .await?;
-
-    if result.rows_affected() > 0 {
-        Ok(())
-    } else {
-        Err(PersistenceError::Unknown)
-    }
-}

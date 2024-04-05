@@ -10,7 +10,7 @@ use crate::persistence::article::{
 };
 use crate::persistence::tag::delete_tag_by_article_id;
 use crate::persistence::user::select_user_by_id;
-use actix_web::{delete, get, post, put, web, Responder};
+use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 
 use realworld_rust_actix_web::SessionState;
 use sqlx::MySqlPool;
@@ -85,10 +85,14 @@ pub async fn delete_article(
 ) -> actix_web::Result<impl Responder> {
     let user_id = session_state.user_id;
     let slug = path.into_inner();
+    let slug2 = slug.clone();
     log::info!("delete_article: slug: {:?}", slug);
 
-    delete_article_by_slug(&pool, user_id, slug).await?;
-    Ok(web::Json(()))
+    let article = select_article_by_slug(&pool, slug).await?;
+    delete_article_by_slug(&pool, user_id, slug2).await?;
+    delete_tag_by_article_id(&pool, article.id).await?;
+
+    Ok(HttpResponse::NoContent().finish())
 }
 
 #[put("/{slug}")]
