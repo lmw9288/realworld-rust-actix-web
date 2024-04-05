@@ -2,10 +2,11 @@ use crate::models::{
     ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleWrapper,
     ArticlesWrapper, UserEntity, UserResponse,
 };
+use crate::persistence::user::select_user_by_id;
 use crate::persistence::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
     select_article_by_id, select_article_by_slug,
-    select_article_favorite_by_user_id_and_article_id, select_articles_by_query, select_user_by_id,
+    select_article_favorite_by_user_id_and_article_id, select_articles_by_query,
 };
 use actix_web::{delete, get, post, put, web, Responder};
 use chrono::Utc;
@@ -29,7 +30,7 @@ pub async fn list_articles(
 
     let mut result_articles = vec![];
     for a in articles {
-        log::info!("article = {:?}", a);
+        // log::info!("article = {:?}", a);
         let user = select_user_by_id(&pool, a.user_id).await?;
         let article_favorite =
             select_article_favorite_by_user_id_and_article_id(&pool, a.user_id, a.id).await?;

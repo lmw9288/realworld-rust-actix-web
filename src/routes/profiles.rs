@@ -4,7 +4,8 @@ use sqlx::MySqlPool;
 use realworld_rust_actix_web::SessionState;
 
 use crate::models::{ProfileResponse, ProfileWrapper};
-use crate::persistence::{delete_follow_by_user, insert_follow_by_user, select_user_by_username};
+use crate::persistence::user::select_user_by_username;
+use crate::persistence::{delete_follow_by_user, insert_follow_by_user};
 
 #[get("/{username}")]
 pub async fn get_profile(
