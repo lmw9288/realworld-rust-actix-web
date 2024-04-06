@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+pub mod comment;
+pub mod user;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: i64,
@@ -156,35 +159,6 @@ pub struct ProfileResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CommentResponse {
-    pub id: i64,
-    pub body: String,
-    #[serde(rename = "createdAt")]
-    pub created_at: String,
-    #[serde(rename = "updatedAt")]
-    pub updated_at: String,
-    pub author: UserResponse,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct CommentCreateForm {
-    pub body: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct CommentWrapper<T>
-where
-    T: serde::Serialize,
-{
-    pub comment: T,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct CommentsWrapper<T> {
-    pub comments: Vec<T>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct TagsWrapper {
     pub tags: Vec<String>,
 }
@@ -207,3 +181,4 @@ pub struct UserFollowEntity {
     pub follower_user_id: i64,
     pub followee_user_id: i64,
 }
+

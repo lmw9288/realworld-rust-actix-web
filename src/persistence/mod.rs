@@ -1,4 +1,4 @@
-use std::fmt;
+
 
 use actix_web::{body::BoxBody, http::StatusCode, HttpResponse};
 use derive_more::{Display, Error, From};
@@ -7,6 +7,7 @@ use realworld_rust_actix_web::ErrorResponse;
 pub mod article;
 pub mod tag;
 pub mod user;
+pub mod comment;
 
 #[derive(Debug, Display, Error, From)]
 pub enum PersistenceError {

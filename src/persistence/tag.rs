@@ -1,6 +1,6 @@
 use sqlx::MySqlPool;
 
-use crate::models::TagEntity;
+
 
 use super::PersistenceError;
 

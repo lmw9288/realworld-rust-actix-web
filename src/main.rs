@@ -1,8 +1,7 @@
 use std::env;
 
 use actix_cors::Cors;
-use actix_web::dev::Transform;
-use actix_web::http::{self, header};
+
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenvy::dotenv;
 use env_logger::Env;
@@ -62,6 +61,7 @@ async fn main() -> std::io::Result<()> {
                     .service(routes::articles::single_article)
                     .service(routes::comments::get_article_comments)
                     .service(routes::comments::create_article_comments)
+                    .service(routes::comments::delete_article_comment)
                     .service(routes::articles::favorite_article)
                     .service(routes::articles::unfavorite_article),
             )

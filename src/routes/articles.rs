@@ -1,6 +1,7 @@
+use crate::models::user::to_author;
 use crate::models::{
     ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleUpdateForm,
-    ArticleWrapper, ArticlesWrapper, UserEntity, UserResponse,
+    ArticleWrapper, ArticlesWrapper, UserEntity,
 };
 use crate::persistence::article::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
@@ -224,15 +225,5 @@ fn to_article_response(
         favorited,
         tag_list,
         author: to_author(user),
-    }
-}
-
-fn to_author(user: UserEntity) -> UserResponse {
-    UserResponse {
-        username: user.username,
-        email: user.email,
-        token: None,
-        bio: None,
-        image: user.image,
     }
 }
