@@ -1,7 +1,7 @@
-use crate::models::user::to_author;
-use crate::models::{
+use crate::models::user::{to_author, UserEntity};
+use crate::models::article::{
     ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleUpdateForm,
-    ArticleWrapper, ArticlesWrapper, UserEntity,
+    ArticleWrapper, ArticlesWrapper,
 };
 use crate::persistence::article::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,

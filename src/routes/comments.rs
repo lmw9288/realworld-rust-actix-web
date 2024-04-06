@@ -4,7 +4,7 @@ use crate::{
             CommentCreateForm, CommentEntity, CommentResponse, CommentWrapper, CommentsWrapper,
         },
         user::to_author,
-        UserEntity,
+        user::UserEntity,
     },
     persistence::{
         article::select_article_by_slug,

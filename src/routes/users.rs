@@ -1,6 +1,7 @@
-use crate::models::{
-    Claims, UserEntity, UserLogin, UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper,
+use crate::models::user::{
+    UserEntity, UserLogin, UserRegistryForm, UserResponse, UserUpdateForm, UserWrapper,
 };
+use crate::models::Claims;
 use crate::persistence::user::{
     insert_user, select_user_by_email, select_user_by_id, update_user_by_id,
 };

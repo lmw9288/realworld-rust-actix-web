@@ -2,7 +2,7 @@ use chrono::Utc;
 use sqlx::{Execute, MySqlPool, QueryBuilder};
 
 use crate::{
-    models::{UserEntity, UserFollowEntity, UserUpdateForm},
+    models::user::{UserEntity, UserFollowEntity, UserUpdateForm},
     utils::encrypt_password,
 };
 

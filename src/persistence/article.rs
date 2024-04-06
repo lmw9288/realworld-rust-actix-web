@@ -1,7 +1,7 @@
 use chrono::Utc;
 use sqlx::MySqlPool;
 
-use crate::models::{
+use crate::models::article::{
     ArticleCreateForm, ArticleEntity, ArticleFavoriteEntity, ArticleQuery, ArticleUpdateForm,
 };
 
