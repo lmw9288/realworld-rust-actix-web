@@ -1,14 +1,44 @@
+use std::fmt;
+
 use crate::models::Claims;
 use actix_web::dev::Payload;
 use actix_web::error::ErrorUnauthorized;
 use actix_web::{Error, FromRequest, HttpRequest};
 use futures::future::{err, ok, Ready};
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use persistence::ErrorResponse;
+use serde::{Deserialize, Serialize};
 
 mod models;
-mod persistence;
-mod utils;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub errors: ErrorsBody,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorsBody {
+    body: Vec<String>,
+}
+
+impl ErrorResponse {
+    // pub fn new(errors: Vec<String>) -> Self {
+    //     ErrorResponse {
+    //         errors: ErrorsBody { body: errors },
+    //     }
+    // }
+
+    pub fn new(msg: String) -> Self {
+        ErrorResponse {
+            errors: ErrorsBody { body: vec![msg] },
+        }
+    }
+}
+
+impl fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.errors)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SessionState {

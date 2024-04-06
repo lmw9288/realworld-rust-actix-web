@@ -1,13 +1,8 @@
 use std::fmt;
 
-use actix_web::{
-    body::BoxBody,
-    http::{header, StatusCode},
-    web::BytesMut,
-    HttpResponse,
-};
+use actix_web::{body::BoxBody, http::StatusCode, HttpResponse};
 use derive_more::{Display, Error, From};
-use serde::{Deserialize, Serialize};
+use realworld_rust_actix_web::ErrorResponse;
 
 pub mod article;
 pub mod tag;
@@ -24,36 +19,6 @@ pub enum PersistenceError {
     MysqlError(sqlx::Error),
 
     Unknown,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorResponse {
-    pub errors: ErrorsBody,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ErrorsBody {
-    body: Vec<String>,
-}
-
-impl ErrorResponse {
-    // pub fn new(errors: Vec<String>) -> Self {
-    //     ErrorResponse {
-    //         errors: ErrorsBody { body: errors },
-    //     }
-    // }
-
-    pub fn new(msg: String) -> Self {
-        ErrorResponse {
-            errors: ErrorsBody { body: vec![msg] },
-        }
-    }
-}
-
-impl fmt::Display for ErrorResponse {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.errors)
-    }
 }
 
 impl actix_web::ResponseError for PersistenceError {

@@ -1,7 +1,6 @@
 use actix_web::{delete, get, post, web, Responder};
-use sqlx::MySqlPool;
-
 use realworld_rust_actix_web::SessionState;
+use sqlx::MySqlPool;
 
 use crate::models::{ProfileResponse, ProfileWrapper};
 use crate::persistence::user::{delete_follow_by_user, insert_follow_by_user};
