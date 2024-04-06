@@ -230,9 +230,9 @@ pub async fn insert_article_favorite(
     }
 }
 
-pub async fn select_article_favorite_by_user_id_and_article_id(
+pub async fn select_article_favorite(
     pool: &MySqlPool,
-    user_id: i64,
+    user_id: Option<i64>,
     article_id: i64,
 ) -> Result<bool, PersistenceError> {
     let result = sqlx::query_as!(

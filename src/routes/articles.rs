@@ -1,13 +1,12 @@
-use crate::models::user::{to_author, UserEntity};
 use crate::models::article::{
     ArticleCreateForm, ArticleEntity, ArticleQuery, ArticleResponse, ArticleUpdateForm,
     ArticleWrapper, ArticlesWrapper,
 };
+use crate::models::user::{to_author, UserEntity};
 use crate::persistence::article::{
     delete_article_by_slug, delete_article_favorite, insert_article, insert_article_favorite,
-    select_article_by_id, select_article_by_slug,
-    select_article_favorite_by_user_id_and_article_id, select_articles_by_query,
-    update_article_by_slug,
+    select_article_by_id, select_article_by_slug, select_article_favorite,
+    select_articles_by_query, update_article_by_slug,
 };
 use crate::persistence::tag::delete_tag_by_article_id;
 use crate::persistence::user::select_user_by_id;
@@ -36,8 +35,7 @@ pub async fn list_articles(
     for a in articles {
         // log::info!("article = {:?}", a);
         let user = select_user_by_id(&pool, a.user_id).await?;
-        let favorited =
-            select_article_favorite_by_user_id_and_article_id(&pool, a.user_id, a.id).await?;
+        let favorited = select_article_favorite(&pool, Some(a.user_id), a.id).await?;
 
         result_articles.push(to_article_response(a, user, favorited))
     }
@@ -63,8 +61,7 @@ pub async fn list_articles_feed(
     for a in articles {
         // log::info!("article = {:?}", a);
         let user = select_user_by_id(&pool, a.user_id).await?;
-        let favorited =
-            select_article_favorite_by_user_id_and_article_id(&pool, user_id, a.id).await?;
+        let favorited = select_article_favorite(&pool, Some(user_id), a.id).await?;
 
         result_articles.push(to_article_response(a, user, favorited))
     }
@@ -133,8 +130,7 @@ pub async fn update_article(
     update_article_by_slug(&pool, user_id, slug, update_form).await?;
     let article = select_article_by_slug(&pool, slug2).await?;
 
-    let favorited =
-        select_article_favorite_by_user_id_and_article_id(&pool, user_id, article.id).await?;
+    let favorited = select_article_favorite(&pool, Some(user_id), article.id).await?;
 
     let user = select_user_by_id(&pool, user_id).await?;
 
@@ -148,17 +144,16 @@ pub async fn update_article(
 //
 #[get("/{slug}")]
 pub async fn single_article(
-    session_state: SessionState,
+    // session_state: SessionState,
     pool: web::Data<MySqlPool>,
     path: web::Path<String>,
 ) -> actix_web::Result<impl Responder> {
     log::info!("single_article: path: {:?}", path);
-    let user_id = session_state.user_id;
+    // let user_id = session_state.user_id;
     let slug = path.into_inner();
     let article = select_article_by_slug(&pool, slug).await?;
     let user = select_user_by_id(&pool, article.user_id).await?;
-    let favorited =
-        select_article_favorite_by_user_id_and_article_id(&pool, user_id, article.id).await?;
+    let favorited = select_article_favorite(&pool, None, article.id).await?;
 
     Ok(web::Json(ArticleWrapper {
         article: to_article_response(article, user, favorited),

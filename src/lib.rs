@@ -2,8 +2,7 @@ use std::fmt;
 
 use crate::models::Claims;
 use actix_web::dev::Payload;
-use actix_web::error::ErrorUnauthorized;
-use actix_web::{Error, FromRequest, HttpRequest};
+use actix_web::{FromRequest, HttpRequest, HttpResponse, ResponseError};
 use futures::future::{err, ok, Ready};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
@@ -11,7 +10,7 @@ use serde::{Deserialize, Serialize};
 mod models;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorResponse {
+pub struct AuthTokenError {
     pub errors: ErrorsBody,
 }
 
@@ -20,21 +19,24 @@ pub struct ErrorsBody {
     body: Vec<String>,
 }
 
-impl ErrorResponse {
-    // pub fn new(errors: Vec<String>) -> Self {
-    //     ErrorResponse {
-    //         errors: ErrorsBody { body: errors },
-    //     }
-    // }
-
+impl AuthTokenError {
     pub fn new(msg: String) -> Self {
-        ErrorResponse {
+        AuthTokenError {
             errors: ErrorsBody { body: vec![msg] },
         }
     }
 }
 
-impl fmt::Display for ErrorResponse {
+impl ResponseError for AuthTokenError {
+    // fn status_code(&self) -> actix_web::http::StatusCode {
+    //     actix_web::http::StatusCode::UNAUTHORIZED
+    // }
+    fn error_response(&self) -> actix_web::HttpResponse {
+        HttpResponse::Unauthorized().json(self)
+    }
+}
+
+impl fmt::Display for AuthTokenError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.errors)
     }
@@ -47,8 +49,8 @@ pub struct SessionState {
 }
 
 impl FromRequest for SessionState {
-    type Error = Error;
-    type Future = Ready<actix_web::Result<SessionState, Error>>;
+    type Error = AuthTokenError;
+    type Future = Ready<actix_web::Result<SessionState, AuthTokenError>>;
     // type Config = ();
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
@@ -60,16 +62,12 @@ impl FromRequest for SessionState {
                 let _split: Vec<&str> = auth.to_str().unwrap().split("Token").collect();
                 let token = _split[1].trim();
 
-                // log::info!("token: {}", token);
-
-                // let _config: Config = Config {};
-                // let _var = _config.get_config_with_key("SECRET_KEY");
-                // let key = _var.as_bytes();
-                match decode::<Claims>(
+                let token_data = decode::<Claims>(
                     token,
                     &DecodingKey::from_secret("realworld".as_ref()),
                     &Validation::default(),
-                ) {
+                );
+                match token_data {
                     Ok(token_data) => {
                         let user_id = token_data.claims.sub;
                         ok(SessionState {
@@ -77,15 +75,10 @@ impl FromRequest for SessionState {
                             token: token.to_string(),
                         })
                     }
-                    Err(_e) => {
-                        let error_response = ErrorResponse::new("invalid token!".to_string());
-                        err(ErrorUnauthorized(
-                            serde_json::to_string(&error_response).unwrap(),
-                        ))
-                    }
+                    Err(_e) => err(AuthTokenError::new("invalid token!".to_string())),
                 }
             }
-            None => err(ErrorUnauthorized("blocked!")),
+            None => err(AuthTokenError::new("invalid header!".to_string())),
         }
     }
 }

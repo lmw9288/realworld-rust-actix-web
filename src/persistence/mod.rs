@@ -2,7 +2,7 @@
 
 use actix_web::{body::BoxBody, http::StatusCode, HttpResponse};
 use derive_more::{Display, Error, From};
-use realworld_rust_actix_web::ErrorResponse;
+use realworld_rust_actix_web::AuthTokenError;
 
 pub mod article;
 pub mod tag;
@@ -36,13 +36,13 @@ impl actix_web::ResponseError for PersistenceError {
 
                 HttpResponse::with_body(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    serde_json::to_string(&ErrorResponse::new(e.to_string())).unwrap(),
+                    serde_json::to_string(&AuthTokenError::new(e.to_string())).unwrap(),
                 )
                 .map_into_boxed_body()
             }
             PersistenceError::Unknown => HttpResponse::with_body(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::to_string(&ErrorResponse::new("unknown error".to_string())).unwrap(),
+                serde_json::to_string(&AuthTokenError::new("unknown error".to_string())).unwrap(),
             )
             .map_into_boxed_body(),
         }
