@@ -16,6 +16,7 @@ pub struct UserEntity {
     pub email: String,
     pub password: String,
     pub image: Option<String>,
+    pub bio: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -60,7 +61,7 @@ pub fn to_author(user: UserEntity) -> UserResponse {
         username: user.username,
         email: user.email,
         token: None,
-        bio: None,
+        bio: user.bio,
         image: user.image,
     }
 }

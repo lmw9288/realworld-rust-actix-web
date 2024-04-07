@@ -46,13 +46,7 @@ pub async fn registry_user(
     .unwrap();
 
     Ok(web::Json(UserWrapper {
-        user: UserResponse {
-            username: user.username,
-            email: user.email,
-            token: Some(token),
-            bio: None,
-            image: None,
-        },
+        user: to_user_response(user, Some(token)),
     }))
 }
 
@@ -89,13 +83,7 @@ pub async fn login_user(
     .unwrap();
     if verify_password(password, &user.password) {
         Ok(web::Json(UserWrapper {
-            user: UserResponse {
-                username: user.username,
-                email: user.email,
-                token: Some(token),
-                bio: None,
-                image: None,
-            },
+            user: to_user_response(user, Some(token)),
         }))
     } else {
         log::error!("invalid email or password");
@@ -108,7 +96,7 @@ pub async fn current_user(
     session_state: SessionState,
     pool: web::Data<MySqlPool>,
 ) -> actix_web::Result<impl Responder> {
-    log::info!("current_user: session_state: {:?}", session_state);
+    // log::info!("current_user: session_state: {:?}", session_state);
     let SessionState { user_id, token } = session_state;
 
     let user = select_user_by_id(&pool, user_id).await?;
@@ -129,13 +117,7 @@ pub async fn update_user(
     let user = select_user_by_id(&pool, user_id).await?;
 
     Ok(web::Json(UserWrapper {
-        user: UserResponse {
-            username: user.username,
-            email: user.email,
-            token: Some(token),
-            bio: None,
-            image: None,
-        },
+        user: to_user_response(user, None),
     }))
 }
 
@@ -144,7 +126,7 @@ fn to_user_response(user: UserEntity, token: Option<String>) -> UserResponse {
         username: user.username,
         email: user.email,
         token: token,
-        bio: None,
+        bio: user.bio,
         image: user.image,
     }
 }

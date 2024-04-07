@@ -45,7 +45,7 @@ pub struct TagEntity {
 pub fn to_profile_response(user: UserEntity, following: bool) -> ProfileResponse {
     ProfileResponse {
         username: user.username,
-        bio: None,
+        bio: user.bio,
         image: user.image,
         following,
     }
