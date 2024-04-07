@@ -169,9 +169,11 @@ pub async fn favorite_article(
     let slug = path.into_inner();
     let user_id = session_state.user_id;
 
-    let article = select_article_by_slug(&pool, slug).await?;
+    let article = select_article_by_slug(&pool, slug.clone()).await?;
     let user = select_user_by_id(&pool, user_id).await?;
     insert_article_favorite(&pool, user_id, article.id).await?;
+    let article = select_article_by_slug(&pool, slug.clone()).await?;
+
     // log::info!()
     Ok(web::Json(ArticleWrapper {
         article: to_article_response(article, user, true),
@@ -187,9 +189,10 @@ pub async fn unfavorite_article(
     let slug = path.into_inner();
     let user_id = session_state.user_id;
 
-    let article = select_article_by_slug(&pool, slug).await?;
+    let article = select_article_by_slug(&pool, slug.clone()).await?;
     let user = select_user_by_id(&pool, user_id).await?;
     delete_article_favorite(&pool, user_id, article.id).await?;
+    let article = select_article_by_slug(&pool, slug.clone()).await?;
 
     Ok(web::Json(ArticleWrapper {
         article: to_article_response(article, user, false),

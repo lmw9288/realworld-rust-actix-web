@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 mod models;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AuthTokenError {
+pub struct ServiceError {
     pub errors: ErrorsBody,
 }
 
@@ -19,15 +19,15 @@ pub struct ErrorsBody {
     body: Vec<String>,
 }
 
-impl AuthTokenError {
+impl ServiceError {
     pub fn new(msg: String) -> Self {
-        AuthTokenError {
+        ServiceError {
             errors: ErrorsBody { body: vec![msg] },
         }
     }
 }
 
-impl ResponseError for AuthTokenError {
+impl ResponseError for ServiceError {
     // fn status_code(&self) -> actix_web::http::StatusCode {
     //     actix_web::http::StatusCode::UNAUTHORIZED
     // }
@@ -36,7 +36,7 @@ impl ResponseError for AuthTokenError {
     }
 }
 
-impl fmt::Display for AuthTokenError {
+impl fmt::Display for ServiceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.errors)
     }
@@ -49,8 +49,8 @@ pub struct SessionState {
 }
 
 impl FromRequest for SessionState {
-    type Error = AuthTokenError;
-    type Future = Ready<actix_web::Result<SessionState, AuthTokenError>>;
+    type Error = ServiceError;
+    type Future = Ready<actix_web::Result<SessionState, ServiceError>>;
     // type Config = ();
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
@@ -75,10 +75,10 @@ impl FromRequest for SessionState {
                             token: token.to_string(),
                         })
                     }
-                    Err(_e) => err(AuthTokenError::new("invalid token!".to_string())),
+                    Err(_e) => err(ServiceError::new("invalid token!".to_string())),
                 }
             }
-            None => err(AuthTokenError::new("invalid header!".to_string())),
+            None => err(ServiceError::new("invalid authorization header!".to_string())),
         }
     }
 }

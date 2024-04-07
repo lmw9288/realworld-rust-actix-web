@@ -15,11 +15,14 @@ pub async fn insert_article(
     user_id: i64,
 ) -> Result<u64, PersistenceError> {
     // let mut conn = pool.get_conn()?;
+    let title = create_form.title;
+
+    let slug = slugify::slugify!(&title) + "-" + Utc::now().timestamp_millis().to_string().as_str();
 
     let result = sqlx::query!(
         "insert into article(title, slug, description, body, created_at, updated_at, tag_list, user_id) values (?, ?, ?, ?, ?, ?, ?, ?)",
-        create_form.title,
-        slugify::slugify!(&create_form.title),
+        &title,
+        slug,
         create_form.description,
         create_form.body,
         Utc::now().naive_utc(),
@@ -118,7 +121,7 @@ pub async fn select_article_by_slug(
 
     // 使用参数化查询以避免SQL注入风险
     let result = sqlx::query_as!(ArticleEntity,
-        "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(*) as favorites_count
+        "SELECT a.id, a.title, a.slug, a.description, a.body, a.created_at, a.updated_at, a.tag_list, a.user_id, count(af.id) as favorites_count
         FROM article a left join article_favorite af on a.id = af.article_id
         WHERE a.slug = ? group by a.id order by a.id desc limit 1",
         (slug)
