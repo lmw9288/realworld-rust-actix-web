@@ -1,20 +1,17 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-use self::user::UserResponse;
+use self::user::{UserEntity, UserResponse};
 
+pub mod article;
 pub mod comment;
 pub mod user;
-pub mod article;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: i64,
     pub exp: u64,
 }
-
-
-
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProfileWrapper<T>
@@ -45,3 +42,11 @@ pub struct TagEntity {
     pub user_id: i64,
 }
 
+pub fn to_profile_response(user: UserEntity, following: bool) -> ProfileResponse {
+    ProfileResponse {
+        username: user.username,
+        bio: None,
+        image: user.image,
+        following,
+    }
+}

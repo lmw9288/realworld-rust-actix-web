@@ -52,6 +52,13 @@ pub async fn select_articles_by_query(
     FROM article a left join article_favorite af on a.id = af.article_id ".to_string();
 
     let mut values = vec![];
+    if query.author.is_some() {
+        if values.len() == 0 {
+            sql.push_str(" where ");
+        }
+        sql.push_str(" a.user_id in (select id from user where username = ?) ");
+        values.push(query.author.unwrap());
+    }
     if query.tag.is_some() {
         if values.len() == 0 {
             sql.push_str(" where ");
